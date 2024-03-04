@@ -1,0 +1,196 @@
+---
+title: "Anàlisi multivariant: Exercicis 1.1"
+author: "Vicent Caselles Ballester"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exercici 1
+
+Carreguem les dades.
+
+```{r}
+data(crabs, package = 'MASS')
+```
+
+Mirem els tipus de variables que tenim al dataset.
+
+```{r}
+str(crabs)
+```
+Veiem que tenim 8 variables, una l'índex de les diferents observacions, així que ens dóna poca informació. En podríem prescindir, en la meva opinió. Tenim 5 variables numèriques, dos factors (sexe, l'altra diria que és subespècie -- confirmat fent `??crabs`).
+
+Per a trobar les mitjanes, medianes, etc. es pot fer servir la funció `summary`.
+
+```{r}
+summary(crabs[unlist(lapply(crabs, is.numeric))])
+```
+Per a dur a terme el resum d'acord als factors, ho faig amb diferents funcions del paquet `dplyr`.
+
+```{r, message=FALSE}
+cat("Resum per als crancs blaus i femelles")
+require(dplyr, quietly = TRUE)
+crabs %>% 
+  filter(sex == "F",
+         sp == "B") %>% 
+  select(FL, RW, CL, CW, BD) %>% summary()
+```
+
+```{r}
+cat("Resum per als crancs taronja i femelles")
+require(dplyr)
+crabs %>% 
+  filter(sex == "F",
+         sp == "O") %>% 
+  select(FL, RW, CL, CW, BD) %>% summary()
+
+```
+  
+
+```{r}
+cat("Resum per als crancs blaus i mascles")
+require(dplyr)
+crabs %>% 
+  filter(sex == "M",
+         sp == "B") %>% 
+  select(FL, RW, CL, CW, BD) %>% summary()
+```
+
+```{r}
+cat("Resum per als crancs taronja i mascles")
+require(dplyr)
+crabs %>% 
+  filter(sex == "M",
+         sp == "O") %>% 
+  select(FL, RW, CL, CW, BD) %>% summary()
+```
+
+No coneixia la funció `fivenum`. Dóna la següent informació: minimum, lower-hinge, median, upper-hinge, maximum; d'acord a la documentació.
+
+```{r}
+crabs %>% 
+  select(FL, RW, CL, CW, BD) %>% lapply(FUN = fivenum)
+```
+Utilitzo àlgebra lineal per a respondre aquesta pregunta. Aquesta es la matriu per a les dades generals.
+
+```{r}
+# src: https://datascienceplus.com/understanding-the-covariance-matrix/
+nums = crabs %>% 
+  select(FL, RW, CL, CW, BD) %>% scale(scale=F) %>% t()
+nums %*% t(nums) / (200 - 1)
+```
+A continuació faig els càlculs per a cada una de les combinacions entre els dos factors (que cada un té dos nivells).
+
+```{r}
+for (s in levels(crabs$sp)){
+  for (x in levels(crabs$sex)){
+    cat(paste('Showing results for sex', x, 'and sp\n', s, sep = ' '))
+    nums = crabs %>% 
+      filter(sex == x,
+            sp == s) %>% 
+      select(FL, RW, CL, CW, BD)  %>% 
+      scale(scale=F) %>% t()
+    n = ncol(nums)
+    print(nums %*% t(nums) / (n - 1))
+  }
+}
+```
+
+Per a calcular el que es demana a l'últim apartat, itero per les dues espècies i guardo els valors que es demanen en un dataframe, el qual utilitzo per a generar la taula final.
+
+```{r}
+require(knitr)
+final_df = data.frame(tr = numeric(),
+                      tr_p = numeric(),
+                      det = numeric(),
+                      dets2 = numeric())
+for (s in levels(crabs$sp)){
+  nums = crabs %>% 
+      filter(sp == s) %>% 
+      select(FL, RW, CL, CW, BD)  %>% 
+      scale(scale=F) %>% t()
+    n = ncol(nums)
+  sigma = (nums %*% t(nums) / (n - 1))
+  trace = sum(diag(sigma))
+  tracep = trace/5
+  dets = det(sigma)
+  dets2 = dets^(1/5)
+  row = list(trace, tracep, dets, dets2)
+  final_df[nrow(final_df) + 1, ] <- row
+}
+rownames(final_df) <- levels(crabs$sp)
+
+kable(final_df)
+```
+
+# Exercici 6
+
+```{r}
+source('chap1huswif.dat')
+
+mat <- as.matrix(huswif)
+
+mat = mat %>% scale(scale=F)
+(t(mat) %*% mat) / (nrow(mat) - 1)
+
+dg <- diag((t(mat) %*% mat) / (nrow(mat) - 1))
+
+dgminus1 = sqrt(1 / dg)
+
+d_1half <- matrix(0, ncol(mat), ncol(mat))
+diag(d_1half) <- dgminus1
+
+y = mat %*% d_1half
+```
+
+
+M'equivoco, he de repassar els apunts d'algebra lineal.
+```{r}
+S <- (t(mat) %*% mat) / (nrow(mat) - 1)
+S_1half <- 1/sqrt(S) # no, així no és!!!!
+```
+
+Ara si, $S^{-1/2}$ es calcula tal que así:
+
+```{r}
+lambda = eigen(S)$values
+v = eigen(S)$vectors
+D <- diag(lambda)
+
+d_1half <- diag(sqrt(1/lambda))
+
+S_1half <- v %*% d_1half %*% t(v)
+huswif_scaled <- mat %*% S_1half
+```
+
+
+```{r}
+mah <- function(x, y, S){
+  x <- as.numeric(x)
+  y <- as.numeric(y)
+  dm <- (x-y) %*% solve(S) %*% (x-y)
+  dm <- sqrt(dm)
+  dm
+}
+
+dm <- matrix(0, dim(huswif)[1], dim(huswif)[1])
+
+for (i in 1:dim(huswif)[1]){
+  for (j in 1:dim(huswif)[1]){
+    if (i == j){
+      dm[i, j] <- 0
+    }
+    else{
+      x <- huswif[i, ]
+      y <- huswif[j, ]
+      
+      dm[i, j] <- mah(x, y, S)
+    }
+  }
+}
+```
+
