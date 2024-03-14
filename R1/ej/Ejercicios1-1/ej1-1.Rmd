@@ -194,3 +194,41 @@ for (i in 1:dim(huswif)[1]){
 }
 ```
 
+
+# Exercici 6 revisat
+
+```{r}
+source('chap1huswif.dat')
+
+d <- diag(1/sqrt(diag(cov(huswif))))
+xminusxhat <- scale(huswif, scale=F)
+y<-xminusxhat %*% d
+```
+
+Let's think about this for a sec... $S$ is a covariance matrix, and is therefore symmetric. We can perform diagonalization.
+
+```{r}
+
+S = cov(huswif)
+V <- eigen(S)$vectors; D <- diag(eigen(S)$values)
+# comprovem que V és ortogonal
+t(V)%*%V # t(V) == solve(V)
+
+y <- xminusxhat %*% V%*%diag(1/sqrt(diag(D)))%*%t(V)
+max(abs(as.matrix(dist(y, diag=T, upper=T)) - dm))
+```
+
+# Exercici 7
+
+```{r}
+sxyall <- diag(S)
+sx <- sxyall[1]
+sy <- sxyall[2]
+r <- cor(huswif)[1, 2]
+
+S_1_2 <- S[1:2, 1:2]
+sqrt(det(S_1_2)) - unname(sqrt(sx) * sqrt(sy) * sqrt(1-r**2))
+
+```
+
+Veiem que, efectivament, són coincidents els resultats.

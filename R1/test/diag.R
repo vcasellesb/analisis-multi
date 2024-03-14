@@ -18,7 +18,7 @@ for (l in lambda){
 
 ############################################################
 
-A <- A <- matrix(c(8,1,6, 3,5,7,
+A <- matrix(c(8,1,6,3,5,7,
                    4,9,2) ,ncol=3, byrow=T)
 #non-singular
 det(A)
@@ -32,6 +32,9 @@ V <- e$vectors
 
 # we can recover A by diagonalization
 stopifnot((V %*% D %*% solve(V)) == A)
+
+# Is positive (semi-)definite?
+c<-chol(A)
 
 ############################################################
 
@@ -67,3 +70,66 @@ check_it <- function(m){
 }
 
 check_it(A)
+
+############################################################
+
+# testing out rank and colspace stuff
+
+A = matrix(c(1,3,0,1),ncol=2); B = matrix(c(2,6,4,5), ncol=2, byrow=F)
+det(A%*%B)
+
+############################################################
+A <- matrix(c(-1,-1,0,0,0,
+              1,0,-1,-1,0,
+              0,1,1,0,-1,
+              0,0,0,1,1), ncol=4)
+
+# Null space of At (plane in R^5)
+y1<-c(1,-1,3,-2,2)
+y2<-c(0,0,2,-2,2)
+t(A) %*% y1
+t(A) %*% y2
+
+############################################################
+
+A <- matrix(c(1,3,2,2), ncol=2)
+V <- eigen(A)$vectors; D <- diag(eigen(A)$values)
+V%*%D^2%*%solve(V)
+
+############################################################
+
+e <- matrix(c(2,1,1/3,1,1,-1,1/3,-1,4),ncol=3)
+
+V <- eigen(e)$vectors; D <- diag(eigen(e)$values)
+
+e1half <- V%*%diag(1/sqrt(diag(D)))%*%solve(V)
+
+############################################################
+
+A <- matrix(c(1,1,2,2,2,4), nrow=2, byrow=T)
+
+svd(A)
+
+############################################################
+# I'm very fascinated about idempotent matrices. Here is an example:
+
+n <- 5
+I = diag(n)
+J = matrix(rep(1, n*n), ncol=n)
+H <- I - 1/n * J
+
+# H is idempotent. This means the following
+H%*%H
+H
+max(abs(H%*%H - H))
+# Are the same
+
+# Also, H as defined allows to scale (substract the mean) 
+# From a data matrix. For example
+X = matrix(rnorm(n*n), ncol=n)
+max(abs(scale(X, scale=F) - H%*%X)) 
+
+# Also something I love is the following:
+max(abs(t(H%*%X)%*%H%*%X - t(X)%*%H%*%X))
+max(abs(t(X)%*%H%*%X/(n-1) - cov(X)))
+# Cool
