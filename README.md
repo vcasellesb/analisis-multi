@@ -1,0 +1,3 @@
+# Repository for my work on multivariate analysis, w.r.t the final (yay) subject from my Bioinformatics MSc
+
+In this repo, I'll be leaving some of my notes, submissions, assignments for my multivariate analysis class. I'll try to keep it tidy, but I'm really chaotic so it will be tough. In `funcs`, you can see some implementations of functions or algorithms to calculate some of the stuff that is useful in multivariate analysis. For example, a function to check if a matrix is positive definite. The topics are divided as R1, ..., Rn, but the logic followed to divide the subject in topics is not up to me. 
