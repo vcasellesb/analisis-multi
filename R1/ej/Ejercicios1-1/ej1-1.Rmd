@@ -232,3 +232,24 @@ sqrt(det(S_1_2)) - unname(sqrt(sx) * sqrt(sy) * sqrt(1-r**2))
 ```
 
 Veiem que, efectivament, són coincidents els resultats.
+
+# Exercici 6 re-revisitat
+
+Amb els coneixements que tenim ara de la matriu idempotent H, podem re-resoldre l'exercici 6.
+
+```{r}
+n <- nrow(huswif)
+I <- diag(1, n, n)
+J <- matrix(rep(1, n*n), ncol=n)
+
+H <- I - J/n
+
+X <- as.matrix(huswif)
+
+cov(X)
+X_scaled <- H%*%X
+
+sds <- apply(X, 2, sd)
+X_scaled %*% diag(1/sds)
+```
+

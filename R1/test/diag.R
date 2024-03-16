@@ -59,7 +59,7 @@ is.positive.definite(A)
 R <- chol(A)
 all(diag(R) > 0)
 
-check_it <- function(m){
+positive_definite <- function(m){
   ## yet another way... the determinant of R has to be nonzero
   R <- try(chol(m), silent = T)
   if (is.matrix(R)){
@@ -69,7 +69,7 @@ check_it <- function(m){
   return(F)
 }
 
-check_it(A)
+positive_definite(A)
 
 ############################################################
 
@@ -133,3 +133,10 @@ max(abs(scale(X, scale=F) - H%*%X))
 max(abs(t(H%*%X)%*%H%*%X - t(X)%*%H%*%X))
 max(abs(t(X)%*%H%*%X/(n-1) - cov(X)))
 # Cool
+
+############################################################
+A <- matrix(c(1,4,3,7,5,2,6,8,2), ncol=3) #
+B <- matrix(c(1,2,3,2,4,5,2,4,6), ncol=3) # rank two matrix
+A%*%B # obv AB is a combination of the columns of A by the rows of B
+# of course, since the rows of B are not linearly independent,
+# the """independentness""" of the cols of A is """lost"""
