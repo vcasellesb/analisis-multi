@@ -251,5 +251,25 @@ X_scaled <- H%*%X
 
 sds <- apply(X, 2, sd)
 X_scaled %*% diag(1/sds)
+
+X_scaled %*% diag(1/sds)
+
+t(diag(1/sds)) == diag(1/sds)
+
+t(diag(1/sds) %*% t(X_scaled))
 ```
+
+# Exercici 2.4
+
+Poso un exemple:
+
+```{r}
+A <- matrix(c(10, sqrt(200), sqrt(200), 20), ncol=2)
+V <- eigen(A)$vectors
+D <- eigen(A)$values
+D[2] <- 0
+B <- V %*% sqrt(D)
+B %*% t(B)
+```
+
 
