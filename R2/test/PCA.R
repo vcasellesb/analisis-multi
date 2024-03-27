@@ -28,7 +28,7 @@ a1
 # TODO: Check if a1 %*% S %*% a2 is equal to cov(a1, a2)
 
 # What is S^(1/2)? It's a matrix where its diagonal corresponds to sd for every 
-# variable and 
+# variable and ...?
 # 
 ##############################
 # Working on Everitt 2011, Multivariate analysis smth smth
@@ -47,7 +47,16 @@ a1 <- -a1
 R%*%a1 == lambda1 * a1
 # evaluates to true... this is not mentioned in the book
 
-a2 <- c()
+# a2 has to check a few boxes. First, it has to be orthogonal to a1
+# Secondly, it has to be a unit vector
+# Third, it has to maximize the variance of a2 %*% R %*% t(a2)
+a2 <- c(1/sqrt(2), -1/sqrt(2))
+
+# first condition
+t(a1) %*% a2
+# second condition
+sqrt(sum(a2**2))
+# third condition -- actually, I don't know how to prove this...
 
 ##############################
 # https://cds.nyu.edu/wp-content/uploads/2021/05/covariance_matrix.pdf
