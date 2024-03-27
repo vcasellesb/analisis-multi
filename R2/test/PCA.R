@@ -20,13 +20,16 @@ t(a1)%*%S_1half%*%S_1half%*%a1
 
 a2 <- V[,2]
 y2 <- X%*%a2
-
 t(a1)%*%S_1half%*%S_1half%*%a2
 
 mean(y1)
 a1 
 
 # TODO: Check if a1 %*% S %*% a2 is equal to cov(a1, a2)
+
+# What is S^(1/2)? It's a matrix where its diagonal corresponds to sd for every 
+# variable and 
+# 
 ##############################
 # Working on Everitt 2011, Multivariate analysis smth smth
 r <- 0.6
@@ -43,3 +46,25 @@ R%*%a1 == lambda1 * a1
 a1 <- -a1
 R%*%a1 == lambda1 * a1
 # evaluates to true... this is not mentioned in the book
+
+a2 <- c()
+
+##############################
+# https://cds.nyu.edu/wp-content/uploads/2021/05/covariance_matrix.pdf
+# 
+S <- matrix(c(1, 0.8, 0, 0.8, 1, 0, 0,0,1.2), byrow=T, ncol=3)
+# The covariance matrix encodes the variance of any linear combination of the 
+# entries of a random vector.
+
+# first recipe
+v1 <- c(100, 50, 50)
+
+# The standard deviation of v1%*%x is equal to t(v1) %*% S %*% v1
+sqrt(t(v1) %*% S %*% v1)
+
+# second recipe
+v2 <- c(100, 100, 0)
+sqrt(t(v2)%*%S%*%v2)
+
+# TODO: Reproduce results from variance in specific direction part (end of section 1)
+
