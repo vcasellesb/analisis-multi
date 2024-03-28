@@ -27,9 +27,8 @@ a1
 
 # TODO: Check if a1 %*% S %*% a2 is equal to cov(a1, a2)
 
-# What is S^(1/2)? It's a matrix where its diagonal corresponds to sd for every 
-# variable and ...?
-# 
+# What is S^(1/2)?
+
 ##############################
 # Working on Everitt 2011, Multivariate analysis smth smth
 r <- 0.6
@@ -57,6 +56,8 @@ t(a1) %*% a2
 # second condition
 sqrt(sum(a2**2))
 # third condition -- actually, I don't know how to prove this...
+
+eigen(R)
 
 ##############################
 # https://cds.nyu.edu/wp-content/uploads/2021/05/covariance_matrix.pdf
