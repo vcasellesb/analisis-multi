@@ -78,3 +78,41 @@ sqrt(t(v2)%*%S%*%v2)
 
 # TODO: Reproduce results from variance in specific direction part (end of section 1)
 
+##############################
+# Everitt 2011: Section 3.10 (Examples -- reproduction)
+
+# EXAMPLE 1
+source('headsize.R')
+head(headsize) # haha
+# Veiem que hi han 4 variables
+
+# A l'exemple només s'utilitzen les columnes head1 i head2
+head_dat <- headsize[, c(1, 3)]
+
+head_pca <- princomp(x = head_dat) # True pca
+
+S <- cov(head_dat)
+A <- eigen(S)$vectors
+D <- eigen(S)$values
+
+a1 <- A[, 1]
+t(a1) %*% S %*% a1 - D[1]
+y1 <- head_dat %*% a1
+
+a2 <- A[, 2]
+t(a2) %*% S %*% a2 - D[2]
+y2 <- head_dat %*% a2
+
+# Podem reproduir la matriu de covariances amb la 
+# matriu generada escalant els eigenvectors amb sqrt(eigenvalues)
+a1_ast <- a1 * sqrt(D[1])
+a2_ast <- a2 * sqrt(D[2])
+A_ast <- matrix(c(a1_ast, a2_ast), ncol=2)
+
+A_ast %*% t(A_ast)
+S
+
+# As an exercise, readers might like to find the predicted covariance 
+# matrix using only the first component.
+# això entenc que es faria així
+a1_ast %*% t(a1_ast)
