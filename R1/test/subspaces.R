@@ -32,5 +32,35 @@ A <- matrix(c(1, 2, 2, 2,
               2, 4, 4, 4), ncol=3)
 
 # Now let's create a matrix B, with m = 3, n = 3, r = 2
-B <- 
-# TODO
+B <- matrix(c(1, 3, 3,
+              6, -1 , 2,
+              2, 6, 6), ncol=3)
+
+rankMatrix(A) == rankMatrix(B) # both are rank 2
+
+# A%*%B should also be rank two
+AB<-A%*%B
+rankMatrix(AB) # 2
+
+## Checking stuff about matrix multiplication
+A <- matrix(c(1,8,2,6), ncol=2)
+B <- matrix(c(3,6,7,14), ncol=2)
+AB <- A%*%B
+
+A <- matrix(c(3,2,7,8), ncol=2)
+B <- matrix(c(6,8,4,11), ncol=2)
+# No matter if the first col of A and the first row of B are linearly
+# dependent, AB is still ranl 2
+A[,1] * 2 == B[1,]
+det(A%*%B) # nonzero
+
+# Strang Problem Set I.3, page 20
+# 2: Find a square matrix with rank (A^2) < rank (A).
+# This is basically asking a matrix A that has columns that are linearly independent
+# when nonsquared, but that become linearly dependent when squared
+A <- matrix(c(1, 1,
+              -1, 1), ncol=2)
+det(A)
+det(A**2)
+
+#Confirm that rank (ATA) =rank (A).
