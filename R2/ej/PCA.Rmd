@@ -1,0 +1,93 @@
+---
+title: "Anàlisi de components principals"
+author: "Vicent Caselles Ballester"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exercici 1
+
+First I'm gonna create a function that converts a covariance matrix into a correlation matrix:
+
+```{r}
+cov2cor_vc <- function(cov){
+  # from: 
+  # https://math.stackexchange.com/questions/186959/correlation-matrix-from-covariance-matrix
+  D <- diag(sqrt(diag(cov)))
+  cor <- solve(D) %*% cov %*% solve(D)
+  cor
+}
+```
+
+
+Let's try it out:
+```{r}
+cov1 <- matrix(c(8,5,5,4), ncol=2)
+cov2cor_vc(cov1)
+
+# We see that if we use the "built-in" function from R we get the same
+cov2cor(cov1)
+```
+
+Cool.
+
+Bivariate density function given x1, x2, cov matrix.
+
+```{r}
+bivariate_df_from_cov <- function(x1, x2, cov){
+  # assumes mu = 0
+  cor <- cov2cor_vc(cov)
+  p12 <- cor[1,2]
+  x1_stuff <- x1/(sqrt(cov[1,1]))
+  x2_stuff <- x2/sqrt(cov[2,2])
+  exp_stuff <- (1/(1-p12**2)) * ((x1_stuff**2) + (x2_stuff**2) - 2*p12*x1_stuff*x2_stuff)
+  exp_stuff <- -exp_stuff/2
+  
+  pre_exp <- 1/(2*pi*sqrt(det(cov)))
+  fx1x2 <- pre_exp * exp(exp_stuff)
+  fx1x2
+}
+```
+
+```{r}
+x1 <- seq(-10, 10, length=41)
+x2 <- x1
+z_vc <- outer(x1,x2,FUN = bivariate_df_from_cov, cov1) # calculating the density values
+```
+
+```{r}
+library(plotly)
+plot_ly() %>% add_surface(x = x1, y = x2, z = t(z))
+```
+
+
+Now I'm just checking I've gotten the z values correctly:
+
+```{r}
+mu1<-0 # setting the expected value of x1
+mu2<-0 # setting the expected value of x2
+s11 <- 8 # setting the variance of x1
+s12 <- 5 # setting the covariance between x1 and x2
+s22 <- 4 # setting the variance of x2
+rho <- 5/sqrt(8*4) # setting the correlation coefficient between x1 and x2 
+x1 <- seq(-10, 10, length=41) # generating the vector series x1
+x2 <- x1 # copying x1 to x2
+
+f<-function(x1,x2){
+term1 <- 1/(2*pi*sqrt(s11*s22*(1-rho^2)))
+term2 <- -1/(2*(1-rho^2))
+term3 <- (x1-mu1)^2/s11
+term4 <- (x2-mu2)^2/s22
+term5 <- -2*rho*((x1-mu1)*(x2-mu2))/(sqrt(s11)*sqrt(s22))
+term1*exp(term2*(term3+term4+term5))
+} # setting up the function of the multivariate normal density >#
+z <- outer(x1,x2,f) # calculating the density values
+
+all.equal(z, z_vc)
+```
+
+Cool
