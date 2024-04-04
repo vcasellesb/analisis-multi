@@ -11,6 +11,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Exercici 1
 
+## a) Escribir la función de densidad $f(x1,x2)$ del vector $x$ y representarla en tres dimensiones.
+
+La primera part feta a mà. No ho mostro, però m'he basat en: \url{https://www.ime.unicamp.br/~cnaber/mvnprop.pdf}.
+
+Segona part:
+
 First I'm gonna create a function that converts a covariance matrix into a correlation matrix:
 
 ```{r}
@@ -53,15 +59,20 @@ bivariate_df_from_cov <- function(x1, x2, cov){
 }
 ```
 
+Define variables:
+
 ```{r}
 x1 <- seq(-10, 10, length=41)
 x2 <- x1
 z_vc <- outer(x1,x2,FUN = bivariate_df_from_cov, cov1) # calculating the density values
 ```
 
+Plot density function:
+
 ```{r}
-library(plotly)
-plot_ly() %>% add_surface(x = x1, y = x2, z = t(z))
+# Commented because I cannot plot it on pdf.
+# library(plotly)
+# plot_ly() %>% add_surface(x = x1, y = x2, z = t(z_vc))
 ```
 
 
@@ -91,3 +102,51 @@ all.equal(z, z_vc)
 ```
 
 Cool
+
+## b)
+
+COV is a 2x2 matrix symmetric matrix, therefore it's eigenvectors form an orthogonal matrix. I has two real eigenvalues.
+```{r}
+V <- eigen(cov1)$vectors; D <- eigen(cov1)$values
+a1 <- V[,1]
+a2 <- V[,2]
+
+t(a1)%*%cov1%*%a1
+D[1]
+t(a2)%*%cov1%*%a2
+D[2]
+```
+Veiem que la primera component explicaria un % elevat de la variança de les dades originals. Podríem reduir de $p=2$ a $m=1$ variables.
+
+## c)
+
+Very much copied from the solution...
+
+Question: Why are the vectors scaled by $\sqrt{\lambda}$?
+```{r}
+x1 <- seq(-6, 6, length=41); x2 <- x1
+z <- outer(x1, x2, FUN=bivariate_df_from_cov, cov1)
+
+contour(x1,x2,z, nlevels=20)
+arrows(0, 0,
+       a1[1]*sqrt(D[1]),
+       a1[2]*sqrt(D[1]),
+       len=0.1,lwd=2,col="maroon")
+
+arrows(0,0,
+       a2[1]*sqrt(D[2]),
+       a2[2]*sqrt(D[2]), 
+       len=0.1,lwd=2,col="maroon")
+```
+
+Clearly the eigenvectors of $\Sigma$ are the shortest and longest radius of the ellipse.
+
+TODO: Think about how the directions of maximum variance relate to the axis of the pdf of a multivariate normal distribution. Some resources:
+
+* https://fkorona.github.io/ATML/2017_2/Lecture_notes/03C_Normal.pdf
+* https://www.cs.princeton.edu/courses/archive/fall10/cos513/notes/2010-11-15.pdf
+* https://www.cs.columbia.edu/~djhsu/coms4771-f20/lectures/06-multivariate_gaussians_and_pca.pdf
+
+# Exercici 2
+
+
