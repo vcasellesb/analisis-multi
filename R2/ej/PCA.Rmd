@@ -165,6 +165,44 @@ t(a2)%*%cov1%*%a2
 t(a3)%*%cov1%*%a3
 ```
 
+Ho he solucionat a mà, inspirat per la solució. Bàsicament, els eigenvalues que surten són $\lambda_1 = 6$, $\lambda_2 = 3$ i $\lambda_3 = 2$. Aquestes són les solucions a l'equació següent:
+$$-\lambda^3 + 11\lambda^2 - 36\lambda + 36 = 0$$
+```{r}
+eigensolucion <- function(lambda){
+  -(lambda**3) + 11*(lambda**2) - 36*lambda + 36
+}
+
+eigensolucion(6)
+eigensolucion(3)
+eigensolucion(2)
+```
+
+I els eigenvectors són els vectors $v_i$ tal que:
+$$\Sigma v_i = \lambda v_i $$
+First eigenvector:
+
+```{r}
+v1 <- matrix(c(1,1,2), ncol=1)
+cov1 %*%v1
+6 * v1
+```
+
+Second eigenvector:
+
+```{r}
+v2 <- c(1,1,-1)
+cov1 %*% v2
+3 * v2
+```
+Third eigenvector:
+
+```{r}
+v3 <- c(1,-1,0)
+cov1 %*% v3
+2 * v3
+```
+
+Cool.
 
 # b) Escribir el vector $y = (Y_1,Y_2,Y_3)'$ de componentes principales e indicar la proporción de la varianza total que explica cada componente.
 
