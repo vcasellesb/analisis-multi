@@ -271,3 +271,27 @@ V[,1]
 ```
 
 So we can assume that bigger sparrows tend to survive more? Also we could assume that individuals with *extreme size* values are less likely to survive.
+
+# Exercici 4
+
+```{r, echo=F}
+remove(list = ls())
+```
+
+Carreguem les dades.
+
+```{r}
+data(crabs, package='MASS')
+str(crabs) # les variables "numèriques" que podem utilitzar per a PCA són les 5 últimes
+```
+
+```{r}
+X <- crabs[4:8]
+X_scaled <- scale(X, scale=F)
+S <- 1/(nrow(X)-1) * t(X_scaled)%*%X_scaled
+V <- eigen(S)$vectors; D <- eigen(S)$values
+prvar <- D/sum(D)
+round(prvar, 2)
+```
+
+Veiem que amb una PC ja cobrim el 98% de la variança de les dades originals.
