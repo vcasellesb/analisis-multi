@@ -26,9 +26,9 @@ sum(apply(t(X), MARGIN=2, FUN = function(x) sum(x*X[1,])))
 sapply(colSums(t(X)), FUN=function(x) sum(x*X[1,]))
 
 # However, this is equivalent:
-# w*a + w*b = w(a*b) (all are vectors)
+# w*a + w*b = w(a+b) (all are vectors)
 # PROOF:
-result<-c(0,0,0,0,0)
+result<-c(0,0,0,0,0) # placeholder
 for (i in 1:ncol(t(X))){
   result = result + t(X)[,i]
 }
