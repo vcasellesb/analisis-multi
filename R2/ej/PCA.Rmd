@@ -206,11 +206,28 @@ Cool.
 
 # b) Escribir el vector $y = (Y_1,Y_2,Y_3)'$ de componentes principales e indicar la proporción de la varianza total que explica cada componente.
 
-TODO
+Done a mano. No mostrado.
 
 # c) Representar la observación $x = (2, 2, 1)'$ en el plano que definen las dos primeras componentes principales.
 
-TODO
+```{r}
+first_comp <- function(x1, x2, x3) 
+  x1 + x2 + 2*x3
+
+second_comp <- function(x1, x2, x3)
+  x1 + x2 - x3
+
+third_comp <- function(x1,x2,x3) x1 - x2
+```
+
+Si queremos solamente las dos primeras componentes:
+
+```{r}
+x1 <- 2; x2 <- 2; x3 <- 1
+y <- c(first_comp(x1,x2,x3), second_comp(x1,x2,x3))
+plot(y[1], y[2])
+```
+
 
 # Exercici 3
 
@@ -237,15 +254,20 @@ prvar <- D/sum(D)
 round(prvar * 100, 2)
 ```
 
-We see that with the first two principal components we already can explain $<90%$ of variance from the original data.
+We see that with the first two principal components we already can explain $>90%$ of variance from the original data.
 
 ```{r}
-a1 <- -V[,1]
-X_scaled = scale(X, scale=F)
 y1 <- X_scaled%*%V[,1]
-
 y2 <- X_scaled%*%V[,2]
 labs <- as.numeric(gorriones$survival)
-
-plot(y1, y2, pch=c(3,21)[labs], ylim = c(-10,10))
+plot(y1, y2, pch=c(3,21)[labs], ylim = c(-10,10), xlim=c(-13,13))
+legend(8, 8, pch=c(3,21), c("dead", "alive"))
 ```
+We see that most sparrows that survived are clustered along higher $y_1$ (first component values). If we inspect the "weights" that construct $y_1$ from the original variables we see that they are a negative linear combination of all the original variables, with greater weights on the first two ones, *length*
+and *wing*.
+
+```{r}
+V[,1]
+```
+
+So we can assume that bigger sparrows tend to survive more? Also we could assume that individuals with *extreme size* values are less likely to survive.
