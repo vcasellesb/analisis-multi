@@ -1,4 +1,4 @@
-# Studying from Everitt, 201
+# Studying from Everitt, 2011
 # I didn't understand the bottom of page 107 (section 4.4.1)
 # It ultimately boils down to me mistrusting the associative rule for sums
 # and vector operations. Shameful, I know. So this is where I check it.
@@ -33,5 +33,8 @@ for (i in 1:ncol(t(X))){
   result = result + t(X)[,i]
 }
 # In result, I have the sum of all the columns of t(X)
+# If we first sum all the column vectors of t(X) (which has been done and
+# the result is in the homonymous variable), multiplying afterwards by the first
+# row of X we effectively construct the first row of B.
 sum(X[1,] * result) == sum(B[1,]) # TRUE
 
