@@ -17,9 +17,7 @@ B <- X%*%t(X)
 
 rowSums(B) # we see that the sum of the first row of B is 23254.52
 sum(B[1,]) # again 23254.52
-
-# again, the same can be obtained like this:
-sum(apply(t(X), MARGIN=2, FUN = function(x) sum(x*X[1,])))
+sum(apply(t(X), MARGIN=2, FUN = function(x) sum(x*X[1,]))) # again, the same
 
 # however, this is not equivalent. If v and w are vectors,
 # sum(v) * sum(w) =/= sum(v*w)!!! DUMBDUMBDUMB
@@ -37,4 +35,3 @@ for (i in 1:ncol(t(X))){
 # the result is in the homonymous variable), multiplying afterwards by the first
 # row of X we effectively construct the first row of B.
 sum(X[1,] * result) == sum(B[1,]) # TRUE
-
