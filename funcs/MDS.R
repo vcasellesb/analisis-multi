@@ -29,5 +29,29 @@ doublecenter <- function(D){
       A[j, k] <- A[k, j]
     }
   }
-  A
+  A * (-1/2)
 }
+
+doublecenter(D)
+all(energy::D_center(D) == doublecenter(D))
+
+B_from_D <- function(D){
+  # Parameters:
+  #   D: square n x n matrix
+  D_squared = D**2
+  n <- nrow(D)
+  B <- matrix(0, ncol=n, nrow=n)
+  
+  d_dot_dot <- sum(D_squared)/(n**2)
+  for (i in 1:n){
+    di_dot <- sum(D_squared[i,])/n
+    for (j in i:n){
+      dj_dot <- sum(D_squared[,j])/n
+      B[i, j] = -(1/2) * (D_squared[i,j] - di_dot - dj_dot + d_dot_dot)
+      B[j, i] = B[i, j]
+    }
+  }
+  B
+}
+
+all(B_from_D(D) == doublecenter(D**2)) # TRUE!
