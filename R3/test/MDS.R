@@ -54,6 +54,7 @@ X <- matrix(c(3,4,4,6,1,
 D <- dist(X, diag = TRUE)
 D <- as.matrix(D)
 
+### BREAK
 # let's check if the utility functions I've created
 # to understand MDS better, I'm gonna compare their
 # results to the ones I get from cmdscale (the "ground truth")
@@ -89,3 +90,51 @@ D_1half <- diag(sqrt(ev_values))
 new_x <- evec%*%D_1half
 
 all.equal(new_x, points) # TRUE
+
+#### CONTINUING WITH THE EXAMPLE
+# it's fun how linear algebra works. Basically, we are trying to reconstruct
+# a dataset X with n observations and m variables from it's n x n distance matrix D
+# So, this is like saying we have n points in an m-dimensional space (X). Now,
+# from D we can construct a representation in a p-dimensional that preserves D
+# However, as seen just by inspecting X (from the example in Everitt's book)
+# we see that it's a matrix with a rank that can be AT MOST m=5, since it's the
+# number of variables we have.
+# So, it makes sense that the rank of X%*%t(X) (nxn matrix) is only 5.
+# Therefore, the eigenvalues != 0 that we get by spectral decomposition of X%*%t(X)
+# are only 5. Proof:
+
+library(matrixcalc)
+m = 5
+matrix.rank(X%*%t(X)) == m # TRUE
+sum(eigen(X%*%t(X))$values > 1e-15) == m # I know I'm somewhat cherry-picking, but TRUE
+
+D <- as.matrix(dist(X))
+B <- B_from_D(D)
+SD <- eigen(B)
+evalues <- SD$values
+evectors <- SD$vectors
+
+# We subset the 5 eigenvectors corresponding to 5 largest eigenvalues 
+evalues_5 <- evalues[1:5]
+evectors_5 <- evectors[, 1:5]
+
+X_reconstructed <- evectors_5 %*% diag(sqrt(evalues_5))
+D_reconstructed <- as.matrix(dist(X_reconstructed))
+max(abs(D_reconstructed - D)) # O(10^-14)
+
+# Let's try it with 3
+evalues_3 <- evalues[1:3]
+evectors_3 <- evectors[, 1:3]
+
+X_reconstructed2 <- evectors_3 %*% diag(sqrt(evalues_3))
+D_reconstructed2 <- as.matrix(dist(X_reconstructed2))
+max(abs(D_reconstructed2 - D)) # O(1)
+
+# Let's try it with 4
+evalues_4 <- evalues[1:4]
+evectors_4 <- evectors[, 1:4]
+
+X_reconstructed3 <- evectors_4 %*% diag(sqrt(evalues_4))
+D_reconstructed3 <- as.matrix(dist(X_reconstructed3))
+max(abs(D_reconstructed3 - D)) # O(1) still...
+

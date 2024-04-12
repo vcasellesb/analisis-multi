@@ -1,9 +1,9 @@
 ## Super naive implementation of pairwise mahalanobis distance
 
-mah_one <- function(x, y, S){
+mah_one <- function(x, y, solved_S){
   x <- as.numeric(x)
   y <- as.numeric(y)
-  dm <- (x-y) %*% solve(S) %*% (x-y)
+  dm <- (x-y) %*% solved_S %*% (x-y)
   dm <- sqrt(dm)
   dm
 }
@@ -12,11 +12,10 @@ mah <- function(df){
   n <- nrow(df)
   res <- matrix(0, n, n)
   S <- cov(df)
+  solved_S <- solve(S)
   for (i in 1:(n-1)){
     for (j in (i+1):n){
-      x <- df[i, ]
-      y <- df[j, ]
-      res[i, j] <- mah_one(x, y, S)
+      res[i, j] <- mah_one(df[i,], df[j,], solved_S)
       res[j, i] <- res[i, j]
     }
   }
@@ -27,8 +26,8 @@ mah <- function(df){
 data(crabs, package='MASS')
 df <- crabs
 df <- df[, 4:8, drop=FALSE]
-all.equal(mahalanobis(df, center), mah(df))
-mah_prova <- mah(df)
+
+mah_prova <- mah(df) # super slow
 
 differences <- c()
 i <- 0
