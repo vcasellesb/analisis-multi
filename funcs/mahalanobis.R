@@ -9,21 +9,35 @@ mah_one <- function(x, y, S){
 }
 
 mah <- function(df){
-  dimmy <- dim(df)[1]
-  res <- matrix(0, dimmy, dimmy)
+  n <- nrow(df)
+  res <- matrix(0, n, n)
   S <- cov(df)
-  for (i in 1:dimmy){
-    for (j in 1:dimmy){
-      if (i == j){
-        res[i, j] <- 0
-      }
-      else{
-        x <- huswif[i, ]
-        y <- huswif[j, ]
-        
-        res[i, j] <- mah_one(x, y, S)
-      }
+  for (i in 1:(n-1)){
+    for (j in (i+1):n){
+      x <- df[i, ]
+      y <- df[j, ]
+      res[i, j] <- mah_one(x, y, S)
+      res[j, i] <- res[i, j]
     }
   }
   res
 }
+
+# tests
+data(crabs, package='MASS')
+df <- crabs
+df <- df[, 4:8, drop=FALSE]
+all.equal(mahalanobis(df, center), mah(df))
+mah_prova <- mah(df)
+
+differences <- c()
+i <- 0
+for (row in 1:nrow(df)){
+  for (row2 in row:nrow(df)){
+    true <- mahalanobis(as.vector(df[row,], mode="numeric"),
+                        as.vector(df[row2,], mode="numeric"), cov(df))
+    i = i + 1
+    differences[i] = abs(mah_prova[row, row2] - sqrt(true))
+  }
+}
+max(differences) # in my laptop, this is O(10^-15)
