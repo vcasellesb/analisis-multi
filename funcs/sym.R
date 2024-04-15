@@ -12,7 +12,7 @@ positive_definite <- function(m){
   R <- try(chol(m), silent = T)
   if (is.matrix(R)){
     if (det(R) != 0){return(T)}
-  }
-  else{return(F)}
+  else{return(F)}}
+  # If we get here there is no cholesky decomposition, thus m is not pd
   return(F)
 }
