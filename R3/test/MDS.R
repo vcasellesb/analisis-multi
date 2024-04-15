@@ -138,3 +138,22 @@ X_reconstructed3 <- evectors_4 %*% diag(sqrt(evalues_4))
 D_reconstructed3 <- as.matrix(dist(X_reconstructed3))
 max(abs(D_reconstructed3 - D)) # O(1) still...
 
+# Comparing X reconstructed by spectral decomposition of B with k=5 or as the 
+# k = 5 first components from PCA:
+evec_PCA <- eigen(cov(X))$vectors
+X_pca <- scale(X, scale=F) %*% evec_PCA
+max(abs(X_pca) - abs(X_reconstructed)) # O(10^-14)
+
+################################################################################
+# Reforçant els meus coneixements amb:
+# https://www.math.uwaterloo.ca/~aghodsib/courses/f10stat946/notes/lec10-11.pdf
+
+KernelMatrix <- function(D){
+  n <- nrow(D)
+  e <- rep(1, n)
+  H <- diag(nrow = n, ncol = n) - (1/n) * e%*%t(e)
+  K <- H%*%D%*%H
+  K * -1/2
+}
+
+max(abs(KernelMatrix(D**2) - B_from_D(D))) # O(10^-15)

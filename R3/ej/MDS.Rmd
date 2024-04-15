@@ -1,0 +1,36 @@
+---
+title: "Ex MDS"
+author: "Vicent Caselles Ballester"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exercici 1
+
+```{r}
+dat <- matrix(c(0, 7, 5, 9, 5, 7, 9,
+                7, 0, 4, 6, 4, 6, 7,
+                5, 4, 0, 3, 4, 5, 6,
+                9, 6, 3, 0, 3, 2, 2,
+                5, 4, 4, 3, 0, 5, 4,
+                7, 6, 5, 2, 5, 0, 4,
+                9, 7, 6, 2, 4, 4, 0), ncol=7)
+all(dat == t(dat)) # to make sure I haven't made mistakes
+```
+
+## a) Construir la matriz B = $-\frac{1}{2}HD^{(2)}H$, donde $D^{(2)}$ es la matriz de distancias al cuadrado y $H$ es la matriz de centrado, y calcular sus valores propios. Observar si la matriz de distancias es euclídea.
+
+Let's use some of the functions I've created.
+
+```{r}
+source('../../funcs/sym.R')
+require(ade4); require(matrixcalc)
+positive_definite(dat)
+is.positive.semi.definite(dat)
+is.euclid(as.dist(dat))
+```
+
