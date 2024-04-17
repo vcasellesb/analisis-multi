@@ -211,3 +211,116 @@ Second part of the question, same solution as before:
 sum(eigen(B)$values[1:2])/sum(eigen(B)$values) * 100
 ```
 
+# Exercici 4
+
+```{r}
+X <- matrix(c(1,1,0,0,1,1,
+              1,1,1,0,0,1,
+              1,0,0,1,0,1,
+              0,0,0,0,1,0),
+            ncol=6, nrow=4, byrow=T)
+
+individuals <- c("A", "B", "C", "D")
+```
+
+## a) Calcular los coeficientes de Sokal y Michener para cada par de individuos y obtener la matriz de distancias asociada.
+
+```{r}
+sokal <- function(X){
+  n <- nrow(X)
+  SOKAL = matrix(0, ncol=n, nrow=n)
+  for (i in 1:(n-1)){
+    for (j in (i+1):n){
+      ind1 <- X[i,]
+      ind2 <- X[j,]
+      summy <- ind1 + ind2
+      a <- sum(summy == 2)
+      d <- sum(summy == 0)
+      p <- length(ind1)
+      SOKAL[i, j] <- SOKAL[j,i] <- (a+d) / p
+    }
+  }
+  SOKAL
+}
+
+S <- sokal(X)
+```
+Checking everything is ok.
+
+```{r}
+SM.simil <- function(x,y){
+ if (length(x) != length(y)){
+ stop("los vectores han de tener la misma longitud")} 
+  else {
+ a <- sum(x==1 & y==1)
+ d <- sum(x==0 & y==0)
+ (a+d)/length(x) }
+}
+
+bin.simil <- function(X,simil){
+ n <- nrow(X)
+ S <- matrix(0,nrow=n,ncol=n)
+ for(i in 1:(n-1)){
+   for(j in (i+1):n) {
+    S[i,j]<-S[j,i] <- simil(X[i,], X[j,])
+   }
+ }
+ S
+}
+
+all.equal(bin.simil(X, SM.simil), S)
+```
+
+```{r}
+D_from_S <- function(S){
+  # S is a matrix of similitudes, i.e. SOKAL or JACCARD indices between pairs
+  # of observations
+  n <- nrow(S) # assumes S is square
+  2 - 2*S
+}
+
+D <- D_from_S(S)
+as.dist(D) # Same as teacher
+```
+## b) Idem with Jaccard
+
+```{r}
+jaccard <- function(X){
+  n <- nrow(X)
+  JACKIE <- matrix(0, ncol=n, nrow=n)
+  for (i in 1:(n-1)){
+    for (j in (i+1):n){
+      ind1 <- X[i,]
+      ind2 <- X[j,]
+      summy <- ind1 + ind2
+      a <- sum(summy == 2)
+      d <- sum(summy == 0)
+      p <- length(ind1)
+      JACKIE[i, j] <- JACKIE[j,i] <- a / (p - d)
+    }
+  }
+  JACKIE
+}
+
+S <- jaccard(X)
+D <- D_from_S(S)
+as.dist(D) # same as teacher
+```
+
+# Exercici 5
+```{r}
+require(cluster)
+data(flower )
+flower
+daisy(flower, metric='gower')
+```
+
+```{r}
+# TODO 
+gower_flower <- function(x, y){
+  nums_x <- x[7:8]; nums_y <- y[7:8]
+  bin_as_x <- x[4]; bin_as_y <- y[4]
+}
+
+```
+
