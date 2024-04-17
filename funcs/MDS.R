@@ -32,8 +32,8 @@ doublecenter <- function(D){
   A * (-1/2)
 }
 
-doublecenter(D)
-all(energy::D_center(D) == doublecenter(D))
+#doublecenter(D)
+#all(energy::D_center(D) == doublecenter(D))
 
 B_from_D <- function(D){
   # Parameters:
@@ -54,4 +54,14 @@ B_from_D <- function(D){
   B
 }
 
-all(B_from_D(D) == doublecenter(D**2)) # TRUE!
+# all(B_from_D(D) == doublecenter(D**2)) # TRUE!
+
+KernelMatrix <- function(D){
+  # source:
+  # https://www.math.uwaterloo.ca/~aghodsib/courses/f10stat946/notes/lec10-11.pdf
+  n <- nrow(D)
+  e <- rep(1, n)
+  H <- diag(nrow = n, ncol = n) - (1/n) * e%*%t(e)
+  K <- H%*%D%*%H
+  K * -1/2
+}
