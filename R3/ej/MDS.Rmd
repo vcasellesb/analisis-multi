@@ -59,7 +59,7 @@ evB <- eigen(B)$values
 sum(evB < 0)
 ```
 
-We see that one eigenvalue of B is < 0, therefore $B$ is not positive semi-definite, therefore $D$ is not euclidean.
+We see that two eigenvalues of $B$ are < 0, therefore $B$ is not positive semi-definite, therefore $D$ is not euclidean.
 
 ## b) Obtener la representación con las dos primeras coordenadas principales e indicar el grado de bondad de esta representación. Se puede hacer a partir de la descomposición de la matriz B o con la función `cmdscale`.
 
@@ -93,3 +93,121 @@ sum(eigen(B)$values[1:2] ** 2)/sum(eigen(B)$values ** 2)
 ```
 
 We see that the results differ a lot.
+
+# Exercici 2
+
+Poner un ejemplo para comprobar que el escalado multidimensional clásico aplicado a las distancias euclídeas calculadas sobre una matriz de datos multivariantes $X$ es equivalente a la solución que se obtiene por el análisis de componentes principales de la matriz de covarianzas de $X$.
+
+```{r}
+data(crabs, package='MASS')
+X <- data.matrix(crabs[, 4:8])
+```
+
+Theoretically, PCA analysis and MDS are equivalent as long as you select the k largest eigen{values, vectors} when constructing the new $X$.
+
+```{r}
+require(matrixcalc)
+D <- as.matrix(dist(X))
+B <- B_from_D(D)
+evalues <- eigen(B)$values
+evectors <- eigen(B)$vectors
+k <- min(matrix.rank(t(X)%*%X), sum(evalues>0))
+```
+
+```{r}
+k_evectors <- evectors[, 1:k, drop=FALSE]
+k_evalues <- evalues[1:k]
+
+new_X_MDS <- k_evectors%*%diag(sqrt(k_evalues))
+max(abs(as.matrix(dist(new_X_MDS)) - D)) # cool
+```
+
+```{r}
+new_X_PCA <- prcomp(X)$x
+max(abs(new_X_PCA - new_X_MDS))
+```
+
+Cool.
+
+# Exercici 3
+
+## Too long to paste here
+
+First let's define the data.
+```{r}
+X <- matrix(c(0.21, 0.06, 0.06, 0.67,
+            0.25, 0.04, 0.14, 0.57,
+            0.22, 0.06, 0.08, 0.64,
+            0.19, 0.04, 0.02, 0.75,
+            0.18, 0, 0.15, 0.67,
+            0.23, 0, 0.28, 0.49,
+            0.3, 0, 0.06, 0.64,
+            0.1, 0.06, 0.13, 0.71,
+            0.27, 0.04, 0.06, 0.63,
+            0.21, 0.05, 0.2, 0.54), ncol = 4, byrow=T)
+```
+
+a) Obtener las distancias de Bhattacharyya según la fórmula 1.
+
+Function definition:
+
+```{r}
+bhattacharyya <- function(X){
+  # X: data matrix
+  n <- nrow(X)
+  D <- matrix(0, nrow=n, ncol=n)
+  for (i in 1:(n-1)){
+    for (j in (i+1):n){
+      pi <- X[i,]
+      pj <- X[j,]
+      D[i,j] <- acos(sum(sqrt(pi*pj)))
+      D[j,i] <- D[i,j]
+    }
+  }
+  D
+}
+```
+
+Calculation on our data:
+
+```{r}
+D_bhat <- bhattacharyya(X)
+```
+
+Same result as the one on the solution, albeit different methodology.
+
+## b) Representar estas poblaciones con las dos primeras coordenadas principales. ¿Se observa algún tipo de agrupación?
+
+```{r}
+B <- B_from_D(sqrt(D_bhat))
+evalues <- eigen(B)$values[1:2]
+evectors <- eigen(B)$vectors[, 1:2]
+
+new_X <- evectors %*% diag(sqrt(evalues))
+plot(new_X[, 1], new_X[, 2], ylim=c(-0.4, 0.4), xlim = c(-0.4, 0.4))
+labels = c("francesa","checa","germánica","vasca","china", 
+           "ainu","esquimal","negra_USA","española","egipcia")
+text(new_X[, 1], new_X[, 2], labels=labels,cex=0.8)
+```
+
+c) ¿Es ésta una distancia euclídea? ¿Cuál es la dimensión de la representación euclídea?
+Determinar el porcentaje de variabilidad explicado por las dos primeras coordenadas principales.
+
+Following the same logic as before:
+
+```{r}
+require(ade4)
+is.positive.semi.definite(B)
+positive_definite(B)
+is.euclid(as.dist(sqrt(D_bhat)))
+sum(eigen(B)$values<0)
+```
+
+Therefore, we can almost 100% certainly conclude that B is positive semi-definite. The dimension of the original space of the data is 4.
+
+Second part of the question, same solution as before:
+
+```{r}
+sum(eigen(B)$values[1:2])/sum(eigen(B)$values) * 100
+```
+
