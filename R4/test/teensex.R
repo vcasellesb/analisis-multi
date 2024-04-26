@@ -52,3 +52,5 @@ D_true <- D <- function(x) {
   matrix(ret, ncol = ncol(x))
 }
 all.equal(D_true(dat), d_chisq(dat)) # TRUE
+
+
