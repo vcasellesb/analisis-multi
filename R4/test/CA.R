@@ -56,10 +56,17 @@ all(X / ndimensional == rbind(X[1,]/ndimensional[1], X[2,]/ndimensional[2],
 # So, to get the row profiles:
 daytype_country / rowSums(daytype_country) # we got it!
 
-rowprofile <- function(mat){
-  mat / rowSums(mat)
+rowprofile <- function(mat, average=FALSE){
+  res <- mat / rowSums(mat)
+  if (average){
+    average_row <- colSums(mat) / sum(mat)
+    oldrownames <- rownames(res)
+    res <- rbind(res, average_row)
+    rownames(res) <- c(oldrownames, 'Average')}
+  return(res)
 }
 
+round(rowprofile(daytype_country, TRUE),2)
 
 # Now let's say we wanted to get the column profiles -- i.e. each column by its
 # column total. This is a little bit trickier. This means that we want to divide 
@@ -83,6 +90,24 @@ all(cbind(X[,1] / ndimensional[1], X[,2] / ndimensional[2],
 # Sorry for this clusterfuck
 
 # So, the way to calculate column profiles is:
-column_profiles <- function(dat){
-  t(t(dat) / colSums(dat))
+column_profiles <- function(mat, average=FALSE){
+  res <-t(t(mat) / colSums(mat))
+  if (average) {
+    average_col <- rowSums(mat) / sum(mat)
+    oldcolnames <- colnames(res)
+    res <- cbind(res, average_col)
+    colnames(res) <- c(oldcolnames, 'Average')}
+  res
 }
+
+# Bayes stuff
+X <- daytype_country
+P_norway_and_holidays = X[1,1] / sum(X)
+P_norway <- rowSums(X)[1] / sum(X)
+P_holidays <- colSums(X)[1] / sum(X)
+
+P_norway_given_holiday <- P_norway_and_holidays / P_holidays
+P_holidays_given_norway <- P_norway_and_holidays / P_norway
+
+P_norway_given_holiday / P_norway
+P_holidays_given_norway / P_holidays
