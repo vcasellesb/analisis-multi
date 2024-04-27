@@ -111,3 +111,19 @@ P_holidays_given_norway <- P_norway_and_holidays / P_norway
 
 P_norway_given_holiday / P_norway
 P_holidays_given_norway / P_holidays
+
+### Chapter 3
+education <- matrix(c(5,18,19,12,3,
+                      7,46,29,40,7,
+                      2,20,39,49,16),ncol=3)
+rownames(education) <- c('Some primary', 'Primary completed',
+                         'Some secondary', 'Secondary completed',
+                         'Some tertiary')
+colnames(education) <- c("Glance", "Fairly thorough", "Very thorough")
+
+# It took me so long to understand the following sentence:
+# Average profile is also a weighted average of the profiles themselves
+
+# PROOF
+average <- column_profiles(education, T)[,4]
+max(abs(colSums(rowprofile(education) * average) - rowprofile(education, T)[6,])) # e-17
