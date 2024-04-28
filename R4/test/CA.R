@@ -197,3 +197,24 @@ chisq_test <- function(mat){
   subs <- subs / E
   sum(subs)
 }
+
+Xi <- chisq_test(education)
+df <- prod(dim(education) - 1)
+pval <- pchisq(q=Xi, df=df, lower.tail = F)
+
+
+inertia <- function(mat){
+  row_masses <- column_profiles(mat,T)[, (ncol(mat)+1)]
+  O <- rowprofile(mat)
+  E <- rowprofile(expected_freq(mat))
+  res <- (O-E)**2
+  res <- res / E
+  res <- res * row_masses 
+  
+  # Check inertia and chisq statistic / sum of table 
+  # are equal
+  stopifnot(sum(res) - chisq_test(mat) / sum(mat) < 1e-15)
+  
+  sum(res)
+}
+inertia(education)
