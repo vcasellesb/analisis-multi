@@ -168,11 +168,32 @@ column_profiles(new_table, T)
 # otherwise known as the "Observed" table that contains the observed frequencies
 
 # This is what the next function does
-expected_freq <- function(mat){
+expected_freq <- function(mat, rowwise=T){
   n <- nrow(mat); m <- ncol(mat)
+  it <- if (rowwise) n else m
   new_mat <- matrix(0, ncol = m, nrow=n)
-  for (i in 1:n){
-    new_mat[i, ] <- rep(rowSums(mat)[i], m)
+  for (i in 1:it){
+    if (rowwise) new_mat[i, ] <- rep(rowSums(mat)[i], m)
+    else new_mat[, i] <- rep(colSums(mat)[i], n)
   }
-  t(t(new_mat) * colSums(mat) / sum(mat))
+  
+  if (rowwise)
+    new_mat <- t(t(new_mat) * colSums(mat) / sum(mat))
+  else new_mat <- new_mat * rowSums(mat) / sum(mat)
+  dimnames(new_mat) <- dimnames(mat)
+  new_mat
+}
+
+E <- expected_freq(education, F)
+E
+
+# Function to calculate Expected and Observed frequencies in a contingency table
+chisq_test <- function(mat){
+  E <- expected_freq(mat)
+  E <- as.vector(E)
+  O <- as.vector(mat)
+  subs <- O - E
+  subs <- subs ** 2
+  subs <- subs / E
+  sum(subs)
 }
