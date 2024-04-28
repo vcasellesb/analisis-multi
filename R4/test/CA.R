@@ -127,3 +127,52 @@ colnames(education) <- c("Glance", "Fairly thorough", "Very thorough")
 # PROOF
 average <- column_profiles(education, T)[,4]
 max(abs(colSums(rowprofile(education) * average) - rowprofile(education, T)[6,])) # e-17
+
+# Same with columns
+average <- rowprofile(education, T)[6,]
+max(abs(colSums(t(column_profiles(education)) * average)) - column_profiles(education, T)[,4]) # 0
+
+######################################## 
+# Section <<Merging rows or columns>>
+
+E1_and_2 <- education[1,] + education[2,]
+new_education <- rbind(E1_and_2, education[3:5,])
+r <- rowprofile(education)
+r1 <- r[1,]; r2 <- r[2,]
+
+# Row 1 and 2 masses:
+m1 <- column_profiles(education, T)[1, 4]
+m2 <- column_profiles(education, T)[2,4]
+
+# Two ways of obtaining the same
+v1 <- r1 * m1/(rowSums(new_education)[1] / sum(education)) + 
+  r2 * m2/(rowSums(new_education)[1] / sum(education))
+v2 <- rowprofile(new_education)[1,]
+max(abs(v1 - v2)) # e-17
+
+#####################
+new_table <- rowprofile(education)
+column_profiles(new_table, T)
+
+######################################## 
+# Chapter 4
+# What is a chi-squared test for contingency tables?
+# Basically, you assume that one of the two variables you have
+# has no effect on the frequencies that you have observed
+# For example, let's say we wanna test homogeneity between the factors of 
+# the variable encoded in the rows of the table
+# We would aggregate the info encoded in the rows (thus, computing the rowSums)
+# of the table and we would use those frequencies (rowSums/totalSum) to compute
+# what we would expect if all rows were the same (there was no differences between rows)
+# Then, we would compare this "fake" expected table to the table that we actually have,
+# otherwise known as the "Observed" table that contains the observed frequencies
+
+# This is what the next function does
+expected_freq <- function(mat){
+  n <- nrow(mat); m <- ncol(mat)
+  new_mat <- matrix(0, ncol = m, nrow=n)
+  for (i in 1:n){
+    new_mat[i, ] <- rep(rowSums(mat)[i], m)
+  }
+  t(t(new_mat) * colSums(mat) / sum(mat))
+}
