@@ -267,4 +267,6 @@ dat4 <- matrix(c(20,1,0,
 inertia(dat1) # 0.0076
 inertia(dat2) # 0.1101
 inertia(dat3) # 0.5923
-inertia(dat4) # 1.5715  
+inertia(dat4) # 1.5715
+
+# TODO Read chapter >3
