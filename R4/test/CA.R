@@ -94,9 +94,9 @@ column_profiles <- function(mat, average=FALSE){
   res <-t(t(mat) / colSums(mat))
   if (average) {
     average_col <- rowSums(mat) / sum(mat)
-    oldcolnames <- colnames(res)
-    res <- cbind(res, average_col)
-    colnames(res) <- c(oldcolnames, 'Average')}
+    res <- cbind(res, average_col, deparse.level = 0)
+    if (!is.null(colnames(mat))) colnames(res) <- c(colnames(mat), 'average')
+  }
   res
 }
 
@@ -240,3 +240,31 @@ inertia <- function(mat){
   sum(res)
 }
 inertia(education)
+
+## testing inertia function
+
+dat1 <- matrix(c(11, 10,9,
+                 10,11,9,
+                 10,9,10,
+                 9,9,12,
+                 10,11,10), ncol=3, byrow=T)
+dat2 <- matrix(c(13,8,9,
+                 6,14,10,
+                 14,7,8,
+                 7,9,18,
+                 10,12,5), ncol=3, byrow=T)
+dat3 <- matrix(c(17,5,3,
+                 3,20,4,
+                 19,5,2,
+                 6,8,35,
+                 5,12,6), ncol=3, byrow=T)
+dat4 <- matrix(c(20,1,0,
+                 0,24,1,
+                 24,2,0,
+                 2,0,47,
+                 4,23,2), ncol=3, byrow=T)
+
+inertia(dat1) # 0.0076
+inertia(dat2) # 0.1101
+inertia(dat3) # 0.5923
+inertia(dat4) # 1.5715  
