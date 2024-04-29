@@ -198,6 +198,28 @@ chisq_test <- function(mat){
   sum(subs)
 }
 
+chisq_testv2 <- function(mat){
+  # Page 27, checking if true
+  E <- expected_freq(mat)
+  n <- nrow(mat)
+  
+  res <- 0
+  for (i in 1:n){
+    O_i <- mat[i,]
+    E_i <- E[i,]
+    denom <- sum(O_i)
+    
+    toadd <- (O_i/denom) - (E_i/denom)
+    toadd <- toadd ** 2
+    toadd <- toadd / (E_i / denom**2)
+    
+    res <- res + sum(toadd)
+  }
+  res
+}
+
+chisq_test(education) == chisq_testv2(education) # TRUE
+ 
 Xi <- chisq_test(education)
 df <- prod(dim(education) - 1)
 pval <- pchisq(q=Xi, df=df, lower.tail = F)
