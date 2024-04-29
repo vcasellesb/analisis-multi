@@ -21,4 +21,4 @@ max(abs(d_chisq(dat) - D_true(dat))) # e-16
 P <- rowprofile(dat)
 c <- colSums(dat) / sum(dat)
 D <- diag(1/sqrt(c))
-dist(P%*%D)
+max(abs(as.matrix(dist(P%*%D) ** 2) - d_chisq(dat, FALSE) ** 2))
