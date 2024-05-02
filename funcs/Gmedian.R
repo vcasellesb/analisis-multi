@@ -84,3 +84,5 @@ diff == diff2
 sum(norm != norm2)
 
 # THEN WHY THE FUCK DOES IT NOT CONVERGE!
+# Note: it did not converge because I was using colMeans(X) again on line 28 instead
+# of x.old. Why the fuck does this cause differences in the result obtained? Fuck if I know
