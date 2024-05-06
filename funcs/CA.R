@@ -81,7 +81,7 @@ chisq_test <- function(mat){
   sum(subs)
 }
 
-inertia <- function(mat){
+inertia <- function(mat, sum = TRUE){
   row_masses <- column_profiles(mat,T)[, (ncol(mat)+1)]
   O <- rowprofile(mat)
   E <- rowprofile(expected_freq(mat))
@@ -92,6 +92,8 @@ inertia <- function(mat){
   # Check inertia and chisq statistic / sum of table 
   # are equal
   stopifnot(sum(res) - chisq_test(mat) / sum(mat) < 1e-15)
+  
+  if (!sum) return(res)
   
   sum(res)
 }
