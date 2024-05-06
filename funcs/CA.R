@@ -50,5 +50,48 @@ d_chisq <- function(mat, col = TRUE,
       res[i,j] <- res[j,i] <- sqrt(resy)
     }
   }
+  namey <- if (col) colnames else rownames
+  if (!is.null(namey(mat))) dimnames(res) <- list(namey(mat), namey(mat))
   res
+}
+
+expected_freq <- function(mat, rowwise=T){
+  n <- nrow(mat); m <- ncol(mat)
+  it <- if (rowwise) n else m
+  new_mat <- matrix(0, ncol = m, nrow=n)
+  for (i in 1:it){
+    if (rowwise) new_mat[i, ] <- rep(rowSums(mat)[i], m)
+    else new_mat[, i] <- rep(colSums(mat)[i], n)
+  }
+  
+  if (rowwise)
+    new_mat <- t(t(new_mat) * colSums(mat) / sum(mat))
+  else new_mat <- new_mat * rowSums(mat) / sum(mat)
+  dimnames(new_mat) <- dimnames(mat)
+  new_mat
+}
+
+chisq_test <- function(mat){
+  E <- expected_freq(mat)
+  E <- as.vector(E)
+  O <- as.vector(mat)
+  subs <- O - E
+  subs <- subs ** 2
+  subs <- subs / E
+  sum(subs)
+}
+
+inertia <- function(mat){
+  row_masses <- column_profiles(mat,T)[, (ncol(mat)+1)]
+  O <- rowprofile(mat)
+  E <- rowprofile(expected_freq(mat))
+  res <- (O-E)**2
+  res <- res / E
+  res <- res * row_masses 
+  
+  # Check inertia and chisq statistic / sum of table 
+  # are equal
+  stopifnot(sum(res) - chisq_test(mat) / sum(mat) < 1e-15)
+  
+  sum(res)
 }
