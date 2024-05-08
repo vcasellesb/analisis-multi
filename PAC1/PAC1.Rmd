@@ -1,0 +1,1082 @@
+---
+title: "Prova d'avaluació continuada 1"
+author: "Vicent Caselles Ballester"
+date: "`r Sys.Date()`"
+output: pdf_document
+header-includes:
+  - \usepackage{amssymb}
+  - \usepackage{bm}
+bibliography: refs.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\tableofcontents
+
+# Exercici 1
+
+Carrego les dades i utilitzo `str` per a fer un resum del número d'observacions, número i tipus de variables.
+
+```{r}
+library(boot)
+data(urine)
+str(urine)
+```
+
+Com podem veure, i tal i com es diu a l'enunciat de l'exercici, hi ha $79$ observacions.
+
+## a)
+
+Per a veure quantes observacions amb `NA`s hi ha al *dataframe* (*df*) i a quines variables corresponen, podem utilitzar la funció `is.na.dataframe`. Aquesta torna un *df* booleà amb les mateixes dimensions que el *df* original. Utilitzant `sum` podem trobar quants `TRUE` hi han en aquest nou *df* -- que es correspondràn al número de `NA`s.
+
+```{r}
+sum(is.na.data.frame(urine))
+```
+
+Veiem que hi han dues instàncies de `NA` al *df* `urine`. Això també ho podriem haver fet amb la funció `summary`\footnote{\url{https://www.r-bloggers.com/2015/10/imputing-missing-data-with-r-mice-package/}}.
+
+```{r}
+summary(urine)
+```
+Per veure a quines observacions (files) i variables (columnes) corresponen aquests `NA`, utilitzem `which` (dient-li que retorni els índex de l'*array* o *df* original).
+
+```{r}
+which(is.na.data.frame(urine), arr.ind = T)
+```
+
+Veiem que aquests corresponen a la variable ```r colnames(urine)[4]``` observació $55$ i a la variable ```r colnames(urine)[5]``` observació número $1$. Veiem que això es correspon als resultats obtinguts amb `summary` (en quant a les variables a les quals corresponen).
+
+Ja que es menciona el tutorial del *footnote* anterior a l'enunciat, vaig a utilitzar-lo per a entendre els *missing data* de `urine`. Anem a mirar quin percentatge de dades *missing* tenim al nostre *dataset* (copiat descaradament del tutorial anterior).
+
+```{r}
+pMiss <- function(x){sum(is.na(x))/length(x)*100}
+apply(urine,2,pMiss) # cap variable supera el threshold de 5% mencionat a l'article
+sort(apply(urine,1,pMiss), T)[1:4] # en canvi, si que hi ha observacions que ho superen
+```
+
+Veiem que correspon a les observacions que hem dit anteriorment. Per a dur a terme la imputació de les dades fem servir la funció `mice` del paquet homònim tal i com es menciona a l'article abans referenciat.
+
+Em costa interpretar si, quan es diu a l'enunciat
+
+> Realizaremos m = 50 imputaciones y calcularemos la mediana del conjunto de valores.
+
+vol dir que hem d'establir el paràmetre `m=50` o `maxit=50`. Entenc que es refereix a `m`, així que això faré. 
+
+```{r, message=FALSE}
+require(mice)
+imputed_urine <- mice(urine, m = 50, seed = 123, method='pmm', print=F)
+```
+
+Accedim a les dades imputades per a les dues variables així:
+
+```{r}
+imputed_osmo <- imputed_urine$imp$osmo
+imputed_cond <- imputed_urine$imp$cond
+
+```
+
+Si recordem, allà on hi havia valors `NA` eren els següents indexos:
+```{r}
+which(is.na.data.frame(urine), arr.ind = T)
+```
+
+La columna 4 correspon a la variable:
+```{r}
+colnames(urine)[4]
+```
+
+Per tant, anem a substituir aquests elements de la matriu de dades amb les medianes tal i com es demana.
+
+```{r}
+urine[55, 4] <- median(as.matrix(imputed_osmo))
+urine[1, 5] <- median(as.matrix(imputed_cond))
+```
+
+Comprovem que ho haguem fet bé.
+```{r}
+sum(is.na.data.frame(urine))
+```
+
+Perfecte.
+
+## b)
+
+Per a fer el que es demana, i sense utilitzar cap *for loop*, ho podem fer amb màscares booleanes. Primer de tot, calculo el vector de mitjanes per les dades corresponents a aquells casos on no hi ha presència de cristalls d'oxalat de calci (`urine$r == 0`).
+
+```{r}
+colMeans(urine[urine$r==0, ])
+```
+
+Podem observar que, la mitjana de la variable `r` és, efectivament, $0$ (això és indicador de que la màscara booleana ha funcionat). Fem el mateix però per a aquells casos on si hi ha cristalls.
+
+```{r}
+colMeans(urine[urine$r==1,])
+```
+
+Veiem que les diferències més grans són a la variable `osmo` (osmolaritat -- concentració de molècules/soluts? de la urina), a la variable `urea` (concentració d'urea a l'urina), i la variable `calc` (concentració de calci); totes aquestes variables tenen mitjanes majors al grup $1$, fets que considero més que lògics.
+
+En quant a les matrius de covariança, ho faig a continuació. Substrec la informació respecte a la variable `r` ja que és realment un factor o variable categòrica.
+
+```{r}
+round(cov(urine[urine$r==0, ])[-1, -1], 6)
+```
+
+```{r}
+round(cov(urine[urine$r==1,])[-1,-1], 6)
+```
+A primera vista, no sabria dir que un grup presenti més variabilitat que l'altre. Vaig a intentar esbrinar més calculant la variança total i la variança generalitzada. Primer de tot calculem la variança total ($tr( S )$).
+
+```{r}
+sum(diag(cov(urine[urine$r==0, ])[-1, -1]))
+
+# comprovació
+stopifnot(abs(sum(diag(cov(urine[urine$r==0, ])[-1, -1])) - 
+            sum(eigen(cov(urine[urine$r==0, ])[-1, -1])$values)) < 1e-10)
+```
+
+Per el grup amb cristalls d'oxalat de calci.
+```{r}
+sum(diag(cov(urine[urine$r==1,])[-1,-1]))
+
+# comprovació
+stopifnot(abs(sum(diag(cov(urine[urine$r==1, ])[-1, -1])) - 
+            sum(eigen(cov(urine[urine$r==1, ])[-1, -1])$values)) < 1e-10)
+```
+
+Ara anem a calcular la variança generalitzada ($\mid S \mid$).
+```{r}
+det(cov(urine[urine$r==0,])[-1,-1])
+
+way2 <- prod(eigen(cov(urine[urine$r==0,])[-1,-1])$values)
+stopifnot(abs(way2-det(cov(urine[urine$r==0,])[-1,-1])) < 1e-6)
+```
+
+Per al grup amb cristalls:
+
+```{r}
+det(cov(urine[urine$r==1,])[-1,-1])
+
+way2 <- prod(eigen(cov(urine[urine$r==1,])[-1,-1])$values)
+stopifnot(abs(way2-det(cov(urine[urine$r==1,])[-1,-1])) < 1e-6)
+
+```
+
+Com veiem, la variabilitat generalitzada del grup amb cristalls és bastant més alta que la del grup que no en presenta Aquests detalls no són tan clars amb una inspecció *a ull nu* de la matriu de variànces-covariànces, ni tampoc són tan evidents amb el càlcul de la variació total com amb el càlcul del determinant de la matriu de covariànces. Això, encara que no tinc clar els detalls, entenc que és degut a que les covariànces entre les variables no estan siguent comptades per al càlcul de la variació total (ja que és la traça de la matriu de variances-covariànces $\bm{S}$). Al grup amb presència de cristalls, segurament hi ha variables que augmenten o disminueixen en conjunció de forma molt més pronunciada, fet que és observable amb el còmput de la variança generalitzada i no amb el de la variança total.
+
+## c)
+
+Aquest tema em sembla força interessant, ja que és un algoritme d'optimització -- minimització de la distància entre tots els punts i el punt a $\mathbb{R}^{n}$ representat per aquesta mediana. Buscant una mica per internet, he trobat el següent paquet escrit en $C^{++}$, anomenat `Gmedian`\footnote{\url{https://github.com/cran/Gmedian/blob/master/src/Gmedian.cpp}}, que utilitza *Stochastic Gradient Descent* (*SGD*) per a solucionar-ho. Tot i això, m'havia descarregat el paquet i entès com funcionava però m'he adonat que utilitza la norma 1 -- $L_1$ norm -- en comptes de la $L_2$, que és la que volem. He intentat adaptar el codi de $C^{++}$ a `R` i canviant el tipus de *norma* però no convergeix de la mateixa manera que un altre paquet que he trobat, anomenat `bigutilsr`, que utilitza un altre tipus de lògica per a arribar al resultat òptim; així doncs, utilitzo aquest últim paquet \footnote{Tot i així, podeu veure el codi on faig proves amb aquest tema a \url{https://github.com/vcasellesb/analisis-multi/blob/main/funcs/Gmedian.R}}.
+
+```{r, message=FALSE}
+# install.packages('bigutilsr')
+require(bigutilsr)
+X <- as.matrix(urine[, -1])
+geometric_median(X)
+```
+
+Aquesta funció té un paràmetre que permet *splittejar* la matriu de dades d'acord a un vector, el qual marco per a que sigui la variable `r`.
+
+```{r}
+geometric_median(urine, by_grp = urine$r)
+```
+
+Podem observar que, a diferència del que passava si comparavem els vectors de mitjanes, amb els vectors de medianes *totes* les variables mostren una mediana major en el cas de les observacions amb presència de cristalls d'oxalat de calci (amb les mitjanes, la variable `ph` tenia una mitjana menor en aquest grup -- fet que no passa amb les medianes). Anem a explorar-ho més comparant la distància euclídea entre els vectors de mitjanes per grup i els vectors de medianes geomètriques per grup.
+
+```{r}
+meanvec0 <- colMeans(urine[urine$r == 0, -1])
+meanvec1 <- colMeans(urine[urine$r==1, -1])
+medianvec0 <- geometric_median(urine[urine$r==0, -1])
+medianvec1 <- geometric_median(urine[urine$r==1, -1])
+```
+
+Un cop tenim construïts els vectors que volem, procedem a fer els càlculs.
+
+```{r}
+eucldistmean <- sqrt(sum((meanvec0 - meanvec1)**2)) # distància euclídea entre
+# els vectors amb les mitjanes
+eucldistmedian <- sqrt(sum((medianvec0 - medianvec1)**2))
+```
+
+La distància entre els vectors mitjana és ```r round(eucldistmean, 2)```, mentre que en el cas dels vectors de les medianes geomètriques és de ```r round(eucldistmedian, 2)```.
+
+## d)
+
+Per a estudiar la presència de dades atípiques en el nostre conjunt de dades, em basaré amb l'apartat d) de l'exercici 15 dels exercicis de R1 (Estadística Descriptiva). Primer de tot ho durem a terme per a les dades corresponents a les observacions sense cristalls d'oxalat de calci.
+
+```{r}
+X_NC <- as.matrix(urine[urine$r == 0, -1]) # X NO CALCI
+# Calculem les distàncies de mahalanobis a les mitjanes i matrius de covariança
+# "no robustes" 
+d2m_NC <- mahalanobis(X_NC, colMeans(X_NC), cov(X_NC))
+
+# A continuació fem el mateix pero amb les mitjanes i cov-var matrix robustes
+set.seed(123)
+rob_cov_NC <- MASS::cov.rob(X_NC, method='mcd')
+d2m_rob_NC <- mahalanobis(X_NC, rob_cov_NC$center, rob_cov_NC$cov)
+
+# Grafiquem el resultat
+plot(sqrt(d2m_rob_NC), col="red", typ="l", ylab="Mahalanobis Distance", 
+     xlab="Observation",lty=2)
+lines(sqrt(d2m_NC), typ="l")
+```
+
+Com podem observar, les distàncies de mahalanobis són majors en el cas d'utilitzar les estimacions *robustes* de la matriu de covariances i el vector $\bm{\mu}$.
+
+Anem a fer el mateix per el cas dels pacients amb cristalls d'oxalat de calci.
+
+```{r}
+X_C <- as.matrix(urine[urine$r == 1, -1]) # X CALCI
+# Calculem les distàncies de mahalanobis a les mitjanes i matrius de covariança
+# "no robustes" 
+d2m_C <- mahalanobis(X_C, colMeans(X_C), cov(X_C))
+
+# A continuació fem el mateix pero amb les mitjanes i cov-var matrix robustes
+set.seed(123)
+rob_cov_C <- MASS::cov.rob(X_C, method='mcd')
+d2m_rob_C <- mahalanobis(X_C, rob_cov_C$center, rob_cov_C$cov)
+
+# Grafiquem el resultat
+plot(sqrt(d2m_rob_C), col="red", typ="l", ylab="Mahalanobis Distance", 
+     xlab="Observation",lty=2)
+lines(sqrt(d2m_C), typ="l")
+```
+
+Veiem que, un altre cop, la línea vermella, corresponent a les distàncies calculades amb el vector de mitjanes i matriu de covariances robustes són generalment majors que les distàncies calculades de forma *no robusta*.
+
+A continuació, faig un gràfic on mostro, *side by side*, les observacions que serien considerats *outliers* o atípics tenint en compte les distàncies calculades utilitzant el vector $\bm{\mu}$ i la matriu de covariances $\Sigma$ de forma *no robusta* i *robusta*, respectivament. En vermell, podem observar aquelles observacions que, tenint en compte l'arrel quadrat del quantil $0.975$ de la distribució $\tilde{\chi}^2$, serien considerades com a *outliers* tenint en compte les estimacions robustes mencionades anteriorment.
+
+Primer de tot es mostra el gràfic per a pacients sense cristalls d'oxalat de calci.
+
+```{r}
+maha1_NC <- sqrt(d2m_NC)
+maha2_NC <- sqrt(d2m_rob_NC)
+max_maha_NC <- max(sqrt(d2m_NC), sqrt(d2m_rob_NC))
+thr <- sqrt(qchisq(0.975, df=6))
+outliers <- sqrt(d2m_rob_NC) > thr 
+par(mfrow = c(1, 2), las = 1)
+plot(sqrt(d2m_NC), xlab = "Observation" ,ylab = "Mahalanobis distance", 
+     ylim = c(0, max_maha_NC), col = outliers + 1, pch = 15 * outliers + 1)
+abline(h = thr,lty=2)
+plot(sqrt(d2m_rob_NC), xlab = "Observation", ylab = "Robust Mahalanobis distance", 
+     ylim = c(0, max_maha_NC), col = outliers + 1, pch = 15 * outliers + 1)
+abline(h = thr,lty=2)
+```
+
+Així doncs, veiem que hi ha unes $\approx 7$ observacions atípiques. A continuació grafico els resultats per al grup que presenta cristalls d'oxalat de calci.
+
+```{r}
+maha1_C <- sqrt(d2m_C)
+maha2_C <- sqrt(d2m_rob_C)
+max_maha_C <- max(sqrt(d2m_C), sqrt(d2m_rob_C))
+thr <- sqrt(qchisq(0.975, df=6))
+outliers <- sqrt(d2m_rob_C) > thr 
+par(mfrow = c(1, 2), las = 1)
+plot(sqrt(d2m_C), xlab = "Observation" ,ylab = "Mahalanobis distance", 
+     ylim = c(0, max_maha_C), col = outliers + 1, pch = 15 * outliers + 1)
+abline(h = thr,lty=2)
+plot(sqrt(d2m_rob_C), xlab = "Observation", ylab = "Robust Mahalanobis distance", 
+     ylim = c(0, max_maha_C), col = outliers + 1, pch = 15 * outliers + 1)
+abline(h = thr,lty=2)
+```
+
+Observem que, encara que el número d'observacions atípiques en el cas de l'estimació *no robusta* és el doble, mentre que les observacions atípiques en el cas de les estimacions robustes és de $10$ ($3$ més que en el cas dels pacients sense cristalls de calci). També, observant les escales d'aquests últims gràfics (casos robustos), podem determinar que els *outliers* corresponents al grup amb presència de cristalls d'oxalat de calci mostren unes distàncies de mahalanobis majors que no pas les del grup sense cristalls (el màxim en el segon cas -- `NC` -- no arriba a $\approx10$ mentre que en el primer cas -- `C` -- n'hi ha dues que superen $10$).
+
+## e)
+
+Escric a continuació una funció que duu a terme el que es demana.
+
+```{r}
+pooledS <- function(X, fac)
+{
+  n <- nrow(X)
+  groups <- unique(fac)
+  k <- length(groups)
+  Sp <- 0
+  
+  i <- which(colSums(sweep(X, 1, fac, "==")) == nrow(X)) # THIS IS SO DUMB
+  
+  for (g in groups){
+    Xi <- X[fac == g, , drop=FALSE]
+    Si <- cov(Xi[, -i])
+    ni <- nrow(Xi)
+    Sp <- Sp + (ni - 1) * Si
+  }
+  Sp <- Sp * 1 / (n - k)
+}
+```
+
+Per a comprovar si ho he fet bé, vaig a utilitzar dues funcions que he trobat que pretenen calcular aquest estadístic. La primera candidata indica que ho he fet malament.
+```{r}
+# install.packages('vcvComp')
+library(vcvComp)
+cov.W(X=as.matrix(urine), urine$r)[-1, -1]
+```
+Però, si utilitzo aquest altre paquet (`Morpho`), si que obtinc els mateixos resultats.
+
+```{r, warning=FALSE}
+# install.packages('Morpho')
+library(Morpho)
+
+covW(as.matrix(urine), urine$r)[-1, -1]
+
+all(covW(as.matrix(urine), urine$r)[-1,-1] == pooledS(urine, urine$r))
+```
+
+Així doncs, considero que ho he fet bé (m'he mirat una mica el codi de cada una de les funcions, i em fio més de la segona funció -- i.e. $\sim$ entenc el que fa i coincideix amb els meus resultats). A continuació calculo la *lambda de Wilks*
+
+```{r}
+n <- nrow(urine)
+k <- length(unique(urine$r))
+W <- (n-k) * pooledS(urine, urine$r)
+T_ <- (n-1) * cov(urine[, -1])
+lambda_wilks <- det(W) / det(T_)
+lambda_wilks
+```
+
+Veiem que tenim una $\Lambda =$ ```r lambda_wilks```.
+
+Buscant per internet he trobat que aquest valor s'utilitza per a determinar si hi ha diferències entre les *group means* en un conjunt de dades multivariat. Amb el següent paquet puc reproduïr la seva computació.
+```{r, message=FALSE}
+# install.packages(rrcov)
+require(rrcov)
+Wilks.test(r ~ ., urine)
+```
+Veiem que el valor de la *Wilks' lambda* és el mateix. Sembla ser que es pot rebutjar la hipòtesi nul·la de que no hi han diferències entre grups.
+
+## f)
+
+Per a dur a terme aquest apartat, m'he debatut força sobre quina seria la millor aproximació. La meva intuïció em diu que, sense dubte, hauria d'escalar les variables originals abans d'aplicar l'algoritme d'anàlisi de components principals, però sento que em falta coneixements per estar-ne $100\%$ segur. Així doncs, vaig a provar de realitzar l'anàlisi de les dues maneres \footnote{La lògica i procediment d'aquest apartat estan fortament influenciats per l'apartat $3.4$ del llibre d'Everitt, 2011.}.
+
+Primer, anem a fer l'anàlisi a partir dels *eigenvectors* de la matriu de covariànces de $\bm{X}$, $\bm{S}$. Per a això, utilitzaré la matriu idempotent $\bm{H}$.
+
+```{r}
+# Construcció de H
+X <- as.matrix(urine[, -1])
+n <- nrow(X)
+I = diag(n)
+J = matrix(rep(1, n*n), ncol=n)
+H <- I - 1/n * J
+# Extracció de S, matriu de cov-var, a partir de H i X
+S = t(X)%*%H%*%X/(n-1)
+
+stopifnot(max(abs(S - cov(X))) <= 1e-10) # I'm insecure
+```
+
+Un cop tenim la matriu $\bm{S}$, podem extreure fàcilment els components principals, que són aquells vectors $\bm{y_1}, \bm{y_2}, ... \bm{y_m}$, construits mitjançant la combinació lineal de les columnes de la matriu de dades $\bm{X}$, que maximitzen la seva variança $var(\bm{y_i}) = var(\bm{X} \bm{a_i^T}) = \bm{a_i^T} \bm{S} \bm{a_i}$.
+
+Es pot demostrar fàcilment que aquests vectors $\bm{a_i}$ que maximitzen la variança de les components principals són els  *eigenvectors* de $\bm{S}$. Ja que es podria augmentar la variança de $y_i$ simplement augmentant la norma de $a_i$, es posa com a *constraint* per aquest procés de maximització que els vectors $a_i$ siguin unitaris (la seva longitud o norma $L_2 = 1$) (també s'aplica el *constraint* de que els vectors $\bm{a_i}$ estiguin *uncorrelated*, i.e. $\bm{a_{i}^ta_j}=0  \forall i \ne j$)
+
+Així doncs, els eigenvectors i eigenvalues es poden aconseguir així:
+
+```{r}
+evectors <- eigen(S)$vectors
+evalues <- eigen(S)$values
+round(evalues, 6)
+```
+
+Veiem que tenim $6$ eigenvalues que podriem considerar majors que zero. Aixó sembla indicar que la matriu de dades $\bm{X}$ és de rank $6$. Comprovem-ho.
+
+```{r, message=FALSE}
+require(matrixcalc)
+matrixcalc::matrix.rank(t(X)%*%X) # l'àlgebra lineal mola
+```
+
+Així doncs, ja que $\bm{S}$ és una matriu simètrica i *positive-definite*, els seus *eigenvectors* seran $6$ i conformaran una matriu ortogonal. Anem a comprovar-ho:
+
+```{r}
+m <- ncol(evectors)
+for (i in 1:(m-1)){
+  vi <- evectors[, i]
+  for (j in (i+1):m){
+    vj <- evectors[, j]
+    stopifnot(abs(t(vi) %*% vj) < 1e-15)
+  }
+}
+```
+
+Ara si, vaig a calcular els components principals a partir dels *eigenvectors* de $\bm{S}$. Veiem que, gràcies a les propietats d'àlgebra lineal, hi ha diferents maneres de calcular la variança de les components principals.
+
+```{r}
+Y <- X %*% evectors
+vars <- evalues
+
+for (i in 1:ncol(Y)){
+  varv1 <- var(Y[, i])
+  
+  a_i <- evectors[, i]
+  varv2 <- as.numeric(t(a_i) %*% S %*% a_i)
+  
+  varv3 <- vars[i]
+  
+  stopifnot(all(round(varv1, 9) == round(varv2, 9), 
+                round(varv2, 9) == round(varv3, 9)))
+}
+```
+
+Tot i això, com a producte de les diferències d'escala entre les variables de $\bm{X}$, segurament hi ha variables que estan dominant completament els components principals (ja que presenten una variança astronòmicament major a les altres). Això ho podem comprovar inspeccionant els eigenvalues de la descomposició espectral de $\bm{S}$.
+
+```{r}
+round(evalues / sum(evalues) * 100, 2)
+```
+
+```{r, include=FALSE}
+stopifnot(max(abs(prcomp(X)$sdev - sqrt(evalues))) < 1e-10)
+
+```
+
+
+Veiem que, efectivament, la primera component principal correspon a un $96\%$ de la variança de les dades originals. Si inspeccionem els eigenvectors de $\bm{S}$, podrem esbrinar quines són les variables originals que estan tenint més pes en la construcció de la primera component principal.
+
+```{r}
+round(evectors[, 1], 3)
+```
+
+Veiem que, principalment, estan actuant la tercera i la cinquena variables. Aquestes, com podem veure, corresponen a aquelles que presenten una major variança.
+```{r}
+rbind(round(evectors[, 1], 3), round(diag(S), 3))
+```
+
+Si inspeccionem amb més profunditat la matriu d'*eigenvectors*, podem observar que els dos primers són bàsicament les variables $3$ i $5$ (amb els valors dels seus components canviats), els dos següents *eigenvectors* mostren el mateix patró però amb les variables $4$ i $6$ (que són les dues següents variables originals amb una variança més alta), i finalment els dos *eigenvectors* finals corresponen bàsicament a multiplicar per $1$ les altres dues variables que manquen i per $\approx 0$ les demés.
+
+```{r}
+round(evectors, 3)
+```
+Això sembla complir el que es menciona a la pàgina $68$ del llibre d'Everitt 2011 (apartat $3.4$):
+
+> (...) the principal components from the covariance matrix simply reflect the order of the sizes of the variances of the observed variables.
+
+Així doncs, podem determinar que ÉS NECESSARI escalar les variables prèviament a aplicar PCA. Així doncs, vaig a dur a terme això a continuació. Tenim la matriu de covariançes guardada a la variable `S`. Podem obtenir la matriu de correlacions, que anomeno $\bm{R}$, així:
+
+```{r}
+sds <- apply(X, 2, sd)
+D <- diag(1/sds)
+R <- D%*% S %*% D
+
+max(abs(R - cor(X))) # ben fet
+```
+
+Ara si, anem a obtenir la descomposició espectral de $\bm{R}$ que ens permetrà calcular les components principals de les dades originals escalades, desfent aquestes variacions entre les escales de les diferents variables originals.
+
+```{r}
+evalues <- eigen(R)$values
+evectors <- eigen(R)$vectors
+
+evalues
+```
+
+```{r, include=FALSE}
+max(abs(sqrt(evalues) - prcomp(X, scale. = T, center = T)$sdev) < 1e-10)
+```
+
+
+Veiem que, un altre cop, tenim $6$ *eigenvalues* majors a $0$, indicant que $\bm{R}$ és de rang $6$ (fet que ja podíem assumir ja que $\bm{S}$ ja ho era). Ara si, vaig a construir les components principals. Com ara demostraré, és el mateix construir les components principals a partir de la matriu de covariances calculada amb $\bm{X}$ escalada ($\bm{X}$ amb la mitjana substreta i dividida per la desviació estàndard), que amb la matriu de correlacions de $\bm{X}$.
+
+```{r}
+X_scaled = scale(X, T, T)
+
+max(abs(cov(X_scaled) - cor(X)))
+```
+
+Així doncs, utilitzant els *eigenvectors* de $\bm{R}$, podem dur a terme l'anàlisi PCA generant els components principals multiplicant la matriu de $\bm{X}$ escalada per aquests.
+
+```{r}
+Y <- X_scaled%*%evectors
+# veiem que es compleix el mateix
+vars <- evalues
+for (i in 1:ncol(Y)){
+  varv1 <- var(Y[, i])
+  
+  a_i <- evectors[, i]
+  varv2 <- as.numeric(t(a_i) %*% R %*% a_i)
+  
+  varv3 <- vars[i]
+  
+  stopifnot(all(round(varv1, 9) == round(varv2, 9), 
+                round(varv2, 9) == round(varv3, 9)))
+}
+
+# També veiem que obtenim els mateixos resultats utilitzant la funció
+# "ground truth" per a realitzar PCA de R
+stopifnot(max(abs(Y) - abs(prcomp(X,scale=T, center=T)$x)) < 1e-10)
+```
+
+Si observem els *eigenvalues* de $\bm{R}$, podem observar els valors de les variàncies de les components principals.
+```{r}
+evalues
+
+round(evalues / sum(evalues) * 100, 2)
+```
+
+Veiem que la primera component principal conté un $61.43\%$ de la variança de les variables originals. Si seleccionessim les tres primeres components principals, aquestes contendrien un ```r sum(round(evalues / sum(evalues) * 100, 2)[1:3])``` de la variança de les variables originals.
+
+Responent a la pregunta de l'enunciat, referent al número de components principals necessaris per a obtenir una bona representació de les variables originals, avaluaré els diferents mètodes que es mencionen.
+
+### 1. Criteri de *Kaiser*
+
+Aquest criteri diu que agafem aquelles $y_j$ primeres components principals que compleixen que els seus valors propis (m'he estat referint a ells com a *eigenvalues* fins ara) són superiors a $1$. Anem a mirar quins són aquests.
+
+```{r}
+which(evalues > 1)
+```
+
+Només el primer *eigenvalue* compleix el criteri de *Kaiser*.
+
+### 2. *Cum sum* (suma acumulativa) de la variança total superior a $\bm{\approx 70 / 80 \%}$.
+
+```{r}
+cumsum(round(evalues / sum(evalues) * 100, 2))
+```
+Veiem que, tal i com he mencionat abans, la primera component principal *explica* un $61.43\%$ de la variança de les dades, mentre que amb les dues primeres ja superaríem el llindar de $70\%$ mencionat al criteri. Tot i així, només seria fins a incloure la tercera, que superaríem el llindar major de $80\%$. Així doncs, ens quedaríem amb dues o tres, depenent de quin subcriteri dins d'aquest criteri seguissim. Com que $77.26$ arrodoneix a $80$, jo optaria per agafar-ne dues.
+
+### 3. *Scree plot*
+
+Per a dur a terme aquest criteri, volia utilitzar la llibreria `factorextra` tal i com es recomana a les solucions dels exercicis de la setmana $2$ de l'assignatura, però no està disponible per a la meva versió de `R`. Tot i això, he aconseguit fer-ho instal·lant directament des de `Github`.
+
+```{r, message=FALSE}
+# if(!require(devtools)) install.packages("devtools")
+# devtools::install_github("kassambara/factoextra")
+library(factoextra)
+fviz_eig(prcomp(X, scale=T, center=T))
+```
+
+Veiem així doncs, que el *colze* del *Scree plot* es situa a les dues components principals.
+
+### 4. Criteri *interpretabilitat*
+
+Entenc que, per a aplicar aquest criteri, he d'inspeccionar els *eigenvectors* que construeixen les components principals. Per a facilitar l'interpretabilitat, afegeixo informació a la variable que els conté.
+
+\newpage
+
+```{r}
+rownames(evectors) <- colnames(X)
+colnames(evectors) <- paste('PC', 1:6, sep='')
+
+round(evectors, 4)
+```
+Veiem que `PC1` conté un *weighted average* de les $6$ components principals, com sol ocórrer quan es duu a terme aquest anàlisi amb les variables escalades. Cal tenir en compte que la única variable que té un escalar amb signe negatiu multiplicant-la és `ph`. Això té sentit ja que, totes les altres variables sembla que el seu augment està correlacionat amb una major presència de cristalls d'oxalat de calci, menys el pH, que segons he trobat a la lliteratura, la formació de cristalls d'oxalat de calci sol ocórrer més (sol potenciar-se) a pHs més àcids (més baixos) [@Carvalho2018; @Werner2021; @Berg1986]. Així que, fins on entenc sobre interpretació de components principals, sembla que té sentit.
+
+La segona component principal, en canvi, sembla que mostra el patró contrari. La variable amb més pes (un escalar major multiplicant-la) és `ph`, amb signe positiu, mentre que les altres tenen un pes força menor. Amb aquest anàlisi, jo m'aventuraria a dir que amb aquestes dues components principals hauriem d'obtenir una separació força clara d'aquelles observacions que presenten cristalls i les que no en presenten.
+
+En definitiva, la meva elecció en quant al nombre de components principals que representen les dades, la meva aportació seria que la resposta resta entre $2$ i $3$. Si haguéssim de separar les dues classes del factor `r`, segurament triaria $3$, ja que segurament donaria millors resultats a la hora de generar models predictius (i l'àmbit mèdic és força important prendre decisions ben informades). Si l'objectiu és obtenir un nombre de variables amb els que dur a terme una recerca exploratòria de les dades bàsica, llavors amb $2$ potser seria suficient.
+
+## g)
+
+Primer de tot, vaig a graficar els punts d'acord a les dues primeres components principals. Com podeu veure, sembla que hi ha un relatiu clustering de les observacions amb cristalls (`r`$=1$) a la zona dreta del gràfic. Sincerament, em costa saber quina seria la línea que separaria millor les dues classes. He intentat utilitzar la funció `e1071::svm` per a trobar-la però no m'ha donat resultats gaire satisfactoris. El que és clar és que, el grup amb cristalls d'oxalat de calci té valors de $5/6$ variables més alts, i per tant valors de la `PC1` majors.
+
+```{r}
+plot(Y[, 1:2], xlab="PC1", ylab="PC2", pch="")
+abline(v=0,
+       h=0,
+       lty=4,col="gray")
+text(Y[, 1],Y[, 2],labels=urine$r,cex=1)
+title(main="Presència de cristalls d'oxalat de calci",line=1)
+```
+
+```{r, include=FALSE}
+pca <- prcomp(X, scale=T, center=T)
+plot(pca$x[,1:2], xlab="PC1", ylab="PC2", pch="")
+abline(v=0,
+       h=0,
+       lty=4,col="gray")
+text(pca$x[,1],pca$x[,2],labels=urine$r,cex=1)
+title(main="Presència de cristalls d'oxalat de calci",line=1)
+```
+
+
+
+```{r, include=FALSE}
+mask1 <- Y[,1] > mean(Y[, 1][urine$r==1])
+mask2 <- Y[, 2] < mean(Y[, 2][urine$r==1])
+
+
+table(urine$r[mask1])
+table(urine$r[!mask1])
+table(urine$r[mask2])
+table(urine$r[!mask2])
+
+table(urine$r[mask1&mask2])
+```
+
+```{r, include=FALSE}
+library(e1071)
+
+s <- svm(as.factor(urine$r) ~ Y[, 1] + Y[, 2], kernel='linear')
+
+sum(s$fitted == urine$r)
+```
+
+Ara vaig a fer el mateix però amb les tres primeres components principals.
+
+```{r}
+# install.packages('scatterplot3d')
+library(scatterplot3d)
+
+scatterplot3d(Y[,1], Y[,2], Y[,3],
+               xlab="PC1", ylab="PC2", zlab="PC3", 
+              pch = ifelse(urine$r == 0, 1, 15))
+
+```
+
+Aquest gràfic és difícil d'interpretar, doncs a continuació genero un gràfic tridimensional rotable amb `plotly`. Degut a que, en format `pdf`, no es poden *incrustar* gràfics rotables, el que faig és rotar jo el gràfic fins a què es pugui dur a terme una visualització satisfactòria, genero una captura en format `.png`, i l'adjunto més endavant. A continuació deixo el codi utilitzat per a generar el gràfic del que parlo.
+
+```{r, message=FALSE}
+# codi utilitzat per a generar el gràfic, copiat dels apunts (exercicis) de 
+# l'assignatura
+library(plotly)
+fig <- plot_ly(urine, x = ~Y[,1], y = ~Y[,2], z = ~Y[,3],
+               color = ~r, colors = c("blue","red"), 
+               symbol = ~r, symbols = c('x','o')) %>% 
+  add_markers(marker = list(size = 3)) %>% 
+  layout(scene = list(xaxis = list(title = "PC1"), 
+                      yaxis = list(title = "PC2"), 
+                      zaxis = list(title = "PC3")))
+```
+
+I el resultat.
+
+```{r}
+library(png)
+img <- readPNG('pca3.png')
+grid::grid.raster(img)
+```
+
+Sembla ser que, en conclusió, si volguéssim separar les dues classes (presència o no de cristalls d'oxalat de calci), tres components principals serien força útils, més que (òbviament) que dues. Podem intuir amb el gràfic "rotable" que la presència d'aquests cristalls sembla estar associat amb valors de la primera component més alts, valors menors de la segona component, i valors majors de la tercera. Entre quina component és més útil, si la segona o la tercera, no n'estic segur. Anem a repassar com es construeixen aquestes tres PCs.
+
+```{r}
+evectors[, 1:3]
+```
+Sembla ser que la tercera PC (les altres dues primeres ja han sigut comentades prèviament) és, principalment, la variable `calc` (concentració de calci) menys la `cond`uctivitat i la `osmo`laritat. Possiblement, la formació de cristalls d'oxalat de calci disminueixi la quantitat de ions carregats positivament (ja que el calci no es troba en estat lliure).
+
+El que em costa més d'interpretar, és el coeficient negatiu de la variable `osmo`, ja que, amb els meus -- encara que limitats -- coneixements de fisiologia humana i una breu recerca bibliogràfica he trobat que, com un deuria esperar \footnote{D'acord a la documentació del \textit{dataset} \texttt{urine}: \textit{Osmolarity is proportional to the concentration of molecules in solution}. Això sembla reforçar el fet de que major presència de cristalls, major osmolaritat.}, la osmolaritat està positivament correlacionada amb la presència de cristalls d'oxalat de calci [@Kavouras2021].
+
+# Exercici 2
+
+Carrego les dades.
+
+```{r}
+seabirds <- read.csv('seabirds.csv', row.names = 1)
+head(seabirds)
+```
+
+```{r}
+dim(seabirds)
+```
+
+Com podem veure, el conjunt de dades `seabirds` té, codificat a les files i columnes respectivament, les espècies i poblacions a les quals fan referència les entrades de la taula. Les entrades de la taula corresponen al número d'ocells de cada espècie i població. 
+
+## a) 
+
+Calcular les freqüències relatives és relativament fàcil. Cal obtenir la suma total de la taula, i dividir cada entrada d'aquesta per la suma total.
+
+```{r}
+X <- as.matrix(seabirds)
+freq.rel <- X / sum(X)
+
+round(freq.rel, 4)
+```
+
+```{r, include=FALSE}
+tabla.N <- as.table(X)
+tabla.F <- tabla.N / sum(tabla.N)
+stopifnot(round(freq.rel, 6) == round(tabla.F, 6))
+```
+
+Per a calcular les freqüències marginals, utilitzo funcions que he creat jo i que estan disponibles al meu repositori de `Github` de l'assignatura \footnote{https://github.com/vcasellesb/analisis-multi.git}. Aquestes van ser creades en els meus esforços per entendre els materials de l'assignatura, i vull utilitzar-les.
+
+```{r}
+source('../funcs/CA.R')
+freq_marg_col <- column_profiles(X, average=T)[, (ncol(X)+1)]
+
+freq_marg_row <- rowprofile(X, average=T)[(nrow(X)+1), ]
+
+```
+
+```{r, include=FALSE}
+margin.f <- margin.table(tabla.F, 1)
+margin.c <- margin.table(tabla.F, 2)
+
+stopifnot(round(freq_marg_col, 7) == round(margin.f, 7))
+```
+
+Un cop he generat la fila i la columna *marginals*, les afegeixo iterativament a continuació.
+
+```{r}
+freq.marg <- freq.rel
+freq.marg <- rbind(freq.marg, freq_marg_row)
+freq.marg <- cbind(freq.marg, c(freq_marg_col, sum(freq_marg_col)))
+colnames(freq.marg) <- c(colnames(X), 'Sum')
+rownames(freq.marg) <- c(rownames(X), 'Sum')
+
+stopifnot(max(abs(freq.marg - addmargins(freq.rel))) < 1e-15) # comprovació
+```
+
+El resultat és el següent.
+
+```{r}
+round(freq.marg, 4)
+```
+
+Per a generar la matriu de la taula $12.6$ del llibre de Krebs, degut a que a primera vista sembla que les columnes sumen 1 (i per tant es tracten de *column profiles*), utilitzaré la meva funció homònima.
+
+```{r}
+profiles <- column_profiles(X)
+round(profiles, 4)
+```
+
+He estat observant aquesta taula i la $12.6$ *side-by-side*, i em sembla que són idèntiques.
+
+
+## b) 
+
+Per a calcular les distàncies Xi-quadrat, també faig servir una funció que he creat (comprovant que no m'hagi equivocat amb la funció que s'utilitza als exercicis de l'assignatura).
+
+```{r}
+d.chisq.col <- d_chisq(X, col=T)
+```
+
+Comprovo que estigui bé amb la funció que proporciona Everitt 2011.
+
+```{r}
+D_true <- D <- function(x) {
+  a <- t(t(x) / colSums(x))
+  ret <- sqrt(colSums((a[,rep(1:ncol(x), ncol(x))] -
+                         a[, rep(1:ncol(x), rep(ncol(x), ncol(x)))])^2 *
+                        sum(x) / rowSums(x)))
+  matrix(ret, ncol = ncol(x))
+}
+
+stopifnot(max(abs(d.chisq.col - D_true(X))) < 1e-10)
+```
+
+Si que està bé.
+
+Un altre cop, el càlcul de la inercia total el duc a terme amb codi escrit per mi mateix durant l'estudi de l'assignatura.
+
+```{r}
+total_inertia <- inertia(X)
+total_inertia
+```
+
+Veiem que la inercia total és de ```r round(total_inertia, 3)```. Aquest resultat l'he verificat amb el procediment que mostra el professor a les solucions dels exercicis del tema d'anàlisi de correspondencia. Donat que per a verificar aquestes computacions es requereix forces línies de codi i explicació d'aquestes, he decidit deixar aquesta comprovació a l'apèndix (m'estic allargant força en aquesta PAC i considero que tant autor com lector estaran cansats de mi). En resum, si no he fet algun error estúpid, hauria de ser correcte.
+
+## c)
+
+Per a dur a terme el anàlisi *MDS*, utilitzo codi que he generat durant l'estudi d'aquest apartat de l'assignatura. Bàsicament, és una funció que utilitza la teoria que es troba a diferents fonts, com el llibre d'Everitt, 2011, per a primer calcular el que s'anomena com a matriu $\bm{B}$ (també anomenada com a *double centering matrix*, *kernel matrix*) a partir de la matriu de distàncies $\bm{D}$. 
+
+```{r}
+source('../funcs/MDS.R')
+B <- B_from_D(d.chisq.col)
+```
+
+```{r, include=FALSE}
+tabla.Pc <- tabla.F %*% diag(1/margin.c)
+nc <- ncol(tabla.F)
+D2c.chisq <- matrix(0,nc,nc)
+for(i in 1:(nc-1))
+  for(j in i:nc)
+    D2c.chisq[i,j] <- 
+  t(tabla.Pc[,i]-tabla.Pc[,j]) %*% diag(1/margin.f) %*% (tabla.Pc[,i]-tabla.Pc[,j])
+
+D2c.chisq <- D2c.chisq + t(D2c.chisq)
+rownames(D2c.chisq ) <- colnames(D2c.chisq) <- colnames(tabla.F)
+
+stopifnot(round(D2c.chisq,6) == round(d.chisq.col**2, 6))
+```
+
+
+Un cop tinc la matriu $\bm{B}$, puc aplicar *MDS* extraient els seus *eigenvalues* i *eigenvectors*.
+
+```{r}
+evalues <- eigen(B)$values
+evectors <- eigen(B)$vectors
+
+evalues
+```
+
+Veiem que tenim $8$ *eigenvalues* aparentment majors que $0$. Així doncs, podem presuposar que el rank de $\bm{B}$ és de $8$. És fàcil de comprovar.
+
+```{r}
+require(matrixcalc)
+matrix.rank(B)
+```
+
+Veiem que és així. Els punts de $\bm{X}$ que han generat aquesta matriu de distàncies $\bm{D}$ els podem estimar utilitzant *Multidimensional Scaling* a partir dels *eigenvectors* anteriorment extrets. Utilitzo una dimensió de dos per a les variables de $\bm{X}$ estimades tal i com fa `cmdscale` per *default*.
+
+```{r}
+evecs2 <- evectors[, 1:2]
+evalues2 <- diag(sqrt(evalues[1:2]))
+X_pred <- evecs2 %*% evalues2
+
+stopifnot(max(abs(X_pred - cmdscale(d.chisq.col))) < 1e-10)
+```
+
+
+Per a representar els *column profiles* de la taula, utilitzo codi tobat a les solucions dels exercicis de *Correspondance Analysis* al campus de l'assignatura.
+
+```{r, message=FALSE}
+require(MASS)
+eqscplot(X_pred,ty="n",xlab="PC1",ylab="PC2", xlim= c(-4.5, 2), ylim=c(-1.5, 2))
+abline(v=0,h=0, col="gray",lty=4)
+text(X_pred[, 1],X_pred[,2],labels=colnames(X),cex=0.8)
+```
+
+Com podem veure, amb aquestes dues primeres components de l'escalat multidimensional, aconseguim separar força bé totes les columnes.
+
+## d)
+
+Calculo la matriu $\bm{Z}$ a partir de la qual calcular la seva descomposició en valors singulars tal i com es fa a l'exercici 5 del tema de *Correspondence Analysis*.
+
+```{r}
+Df <- diag(freq_marg_col)
+Dc <- diag(freq_marg_row)
+Dfmh <- diag(1/sqrt(freq_marg_col))
+Dcmh <- diag(1/sqrt(freq_marg_row))
+Z <- Dfmh %*% (freq.rel - freq_marg_col %o% freq_marg_row) %*% Dcmh
+
+# com a curiositat, fent proves he trobat que la matriu a partir de la qual 
+# calculo les inercies és igual a Z ^ 2
+stopifnot(max(abs(Z**2 - inertia(X, F))) < 1e-15)
+```
+
+Un cop tenim la matriu $\bm{Z}$, podem obtenir la seva descomposició amb la comanda `svd`.
+
+```{r}
+Z.svd <- svd(Z)
+```
+
+A partir de la descomposició en valors singulars de $\bm{Z}$ podem calcular les inèrcies principals i la inèrcia total. Això també ho podem fer amb la meva funció `inertia`.
+
+```{r}
+c.sc <- Dcmh %*% Z.svd$v
+c.pc <- c.sc %*% diag(Z.svd$d)
+f.sc <- diag(1/sqrt(freq_marg_col)) %*% Z.svd$u
+f.pc <- f.sc %*% diag(Z.svd$d)
+
+P_inertias <-  Z.svd$d^2
+
+# Inèrcies principals en %
+round(P_inertias / sum(P_inertias) * 100, 2)
+
+inertia(X)
+```
+
+```{r, include=FALSE}
+stopifnot(round(sum(P_inertias), 10) == round(inertia(X),10))
+```
+
+Al *chunk* de codi anterior podeu veure les inèrcies principals en percentatge. La inèrcia total és de ```r round(inertia(X), 2)```. A continuació grafico les distàncies entre les files i les columnes. He intentat canviar la disposició dels noms de les files, però no he sabut fer-ho. Així doncs, degut al solapament entre *labels*, és difícil discernir les espècies que caracteritzen a la colònia `SI`.
+
+```{r}
+eqscplot(f.pc[,1:2],type="n",xlab="PC1",ylab="PC2")
+abline(v=0,h=0, col="gray",lty=4)
+text(f.pc[,1],f.pc[,2],labels=rownames(X),cex=0.8,font=2,col="blue")
+text(c.pc[,1],c.pc[,2],labels=colnames(X),cex=0.8,font=2,col= "red")
+title(main="Solución simétrica",line=1)
+```
+
+Tot i això, penso que no hauria de ser difícil de trobar utilitzant lògica. Veiem que les *labels* blaves de `SI` es troben allà on la `PC1` és menor a $2$ i la `PC2` es troba a prop de $0$.
+
+```{r}
+mask1 <- f.pc[,1] < -2
+mask2 <- f.pc[,2] > -0.1 & f.pc[,2] < 0.1
+
+row.names(X)[mask1&mask2]
+```
+
+Jo diria que aquests són els noms de les espècies que caracteritzen la colònia denominada com a `SI`. Utilitzant el paquet `ca` veiem que s'aconsegueix pràcticament el mateix gràfic.
+
+```{r, message=FALSE}
+library(ca)
+plot(ca(freq.rel))
+```
+
+## e)
+
+Creo la funció que permet calcular la distància de Canberra tal i com es demana al principi a continuació.
+
+```{r}
+cranberra <- function(mat){
+  n <- ncol(mat)
+  res <- matrix(0, n, n)
+  for (i in 1:(n-1)){
+    p <- mat[,i]
+    for (j in (i+1):n){
+      q <- mat[,j]
+      num <- abs(p - q)
+      denom <- abs(p) + abs(q) 
+      resy <- num/denom
+      res[i, j] <- res[j, i] <- sum(resy, na.rm = T)
+    }
+  }
+  if (!is.null(colnames(mat))) dimnames(res) <- list(colnames(mat), colnames(mat))
+  res
+}
+```
+
+La provem.
+
+```{r}
+profiles <- column_profiles(X)
+cranberra(profiles)
+```
+
+Veiem que, efectivament, els resultats no són els mateixos que els de la taula $12.7$.
+
+Modifico el codi i creo la nova funció d'acord amb el que es demana.
+
+```{r}
+cranberra <- function(mat){
+  n <- ncol(mat)
+  res <- matrix(0, n, n)
+  for (i in 1:(n-1)){
+    p <- mat[,i]
+    for (j in (i+1):n){
+      q <- mat[,j]
+      num <- abs(p - q)
+      denom <- abs(p) + abs(q) 
+      resy <- num/denom
+      res[i, j] <- res[j, i] <- sum(resy, na.rm = T)
+    }
+  }
+  if (!is.null(colnames(mat))) dimnames(res) <- list(colnames(mat), colnames(mat))
+  res / nrow(mat)
+}
+```
+
+Veiem que podem reproduir amb força fidelitat la taula $12.17$.
+
+```{r}
+as.dist(round(1 - cranberra(profiles), 2))
+```
+Finalment, la última implementació que es demana.
+
+```{r}
+cranberra <- function(mat){
+  n <- ncol(mat)
+  k <- nrow(mat)
+  res <- matrix(0, n, n)
+  for (i in 1:(n-1)){
+    p <- mat[,i]
+    for (j in (i+1):n){
+      q <- mat[,j]
+      num <- abs(p - q)
+      denom <- abs(p) + abs(q)
+      nzeros <- sum(denom==0)
+      resy <- num/denom
+      res[i, j] <- res[j, i] <- sum(resy, na.rm = T) * (k)/(k - nzeros)
+    }
+  }
+  if (!is.null(colnames(mat))) dimnames(res) <- list(colnames(mat), colnames(mat))
+  res
+}
+```
+```{r}
+canberra_R_vicent <- cranberra(profiles)
+max(abs(as.matrix(dist(t(profiles), method='canberra')) - canberra_R_vicent))
+```
+
+Veiem que la major diferència entre la meva implementació i la de `R` és de l'ordre de $10^{-15}$.
+
+## f)
+
+De \footnote{\url{https://www.math.uwaterloo.ca/ aghodsib/courses/f10stat946/notes/lec10-11.pdf}}:
+
+> Theorem: Let D be a distance matrix and define K by (2). Then D is Euclidean if and only if K
+is positive semi-definite.
+
+$\bm{K}$ és la matriu *kernel matrix*, anomenada com a $\bm{B}$ a Everitt $2011$. Calculo primer de tot $\bm{B}$.
+
+```{r}
+canberra <- as.matrix(dist(t(profiles), method='canberra'))
+B <- B_from_D(canberra)
+```
+
+Un cop fet això, puc utilitzar un altre cop funcions fetes per mi per a comprovar si les distàncies són euclidianes.
+
+```{r, message=FALSE, warning=FALSE}
+source('../funcs/sym.R')
+require(ade4)
+positive_definite(B)
+is.positive.definite(B) | is.positive.semi.definite(B)
+is.euclid(as.dist(canberra))
+```
+
+Veiem que $\bm{B}$ és positiva semi-definida, però no positiva definida. Així doncs, amb bastanta seguretat podem afirmar que aquesta matriu de distàncies és euclidiana. Vaig a obtenir una representació dels punts que han originat aquesta matriu de distàncies extraient els *eigen{values, vectors}* de $\bm{B}$.
+
+```{r}
+evecs <- eigen(B)$vectors[, 1:2]
+evalues <- diag(sqrt(eigen(B)$values[1:2]))
+X_pred_cran <- evecs %*% evalues
+```
+
+```{r, include=FALSE}
+stopifnot(max(abs(cmdscale(canberra) - X_pred_cran)) < 1e-13)
+```
+
+Un cop tenim aquests punts a l'espai bidimensional generat pels dos primers *eigenvectors* de $\bm{B}$, podem graficar-los amb les *labels* de les columnes del *dataset* `seabirds`. Primer de tot grafico els punts corresponents a les components principals obtingudes realitzant *MDS* amb la distància Xi-quadrat en blau i les components principals obtingudes en el cas d'utilitzar la distància de canberra en negre (amb `eqscplot`).
+
+```{r}
+eqscplot(X_pred_cran,ty="n",xlab="PC1",ylab="PC2")
+abline(v=0,h=0, col="gray",lty=4)
+text(X_pred_cran[, 1],X_pred_cran[,2],labels=colnames(X),cex=0.8)
+text(X_pred[,1], X_pred[,2], labels=colnames(X), col="blue", cex=0.8)
+```
+
+Ara ho duc a terme amb la funció `procrustes` del paquet `vegan`, tal i com es demana.
+
+```{r, message=FALSE}
+# install.packages('vegan')
+require(vegan)
+proc <- procrustes(X_pred, X_pred_cran)
+plot(proc)
+```
+
+Podem observar que hi ha forces diferències entre l'escalat multidimensional utilitzant distàncies de *Canberra* i distàncies *Xi*-quadrat. Tot i això, utilitzant la funció `procrustes` sembla que les distàncies no són tan grans. Seguim tenint una columna (`SI`) força separada de les altres.
+
+# Apèndix
+
+## Comprovació dels meus resultats.
+
+### Exercici 2b)
+```{r}
+tabla.N <- as.table(X)
+n <- sum(tabla.N)
+tabla.F <- tabla.N / n
+stopifnot(max(abs(tabla.F - freq.rel)) < 1e-16)
+
+margin.f <- apply(tabla.F,1,sum)
+margin.c <- apply(tabla.F,2,sum)
+
+tabla.Pc <- tabla.F %*% diag(1/margin.c)
+stopifnot(max(abs(tabla.Pc - profiles)) < 1e-10)
+
+colnames(tabla.Pc) <- colnames(tabla.N)
+nc <- ncol(tabla.N)
+D2c.chisq <- matrix(0,nc,nc)
+for(i in 1:(nc-1))
+  for(j in i:nc)
+    D2c.chisq[i,j] <-
+  t(tabla.Pc[,i]-tabla.Pc[,j]) %*% diag(1/margin.f) %*% (tabla.Pc[,i]-tabla.Pc[,j])
+D2c.chisq <- D2c.chisq + t(D2c.chisq);
+rownames(D2c.chisq ) <- colnames(D2c.chisq) <- colnames(tabla.N);
+
+stopifnot(max(abs(sqrt(D2c.chisq) - d.chisq.col)) < 1e-12)
+
+mds.c <- cmdscale(sqrt(D2c.chisq),eig=TRUE)
+
+stopifnot(max(abs(mds.c$points - X_pred)) < 1e-14)
+
+Dc <- diag(margin.c)
+Df <- diag(margin.f)
+Dfmh <- diag(1/sqrt(margin.f))
+Dcmh <- diag(1/sqrt(margin.c))
+Z <- Dfmh %*% (tabla.F - margin.f %o% margin.c) %*% Dcmh
+Z.svd <- svd(Z)
+inercias <- Z.svd$d^2
+stopifnot(abs(sum(inercias) - inertia(X)) < 1e-15)
+
+```
+
+# Referències
