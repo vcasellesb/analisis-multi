@@ -84,11 +84,9 @@ f_y_given_x <- function(x){
   1 / x
 }
 
-y <- seq(0, 1/4, length=100)
-plot(y, rep(f_y_given_x(1/4), 100), type='l', ylim=c(0, 6))
+x <- 1/4
+y <- seq(0, x, length=100)
+plot(y, rep(f_y_given_x(x), 100), type='l', ylim=c(0, 6))
 
-# Once again, we see that this conditional distribution function does not have area 1 when
-# plotting it using R
-# It's a rectangle with base 1 and height 0.3333...
-1 * 4 # not 1
-
+# This is a rectangle with base (1/x - 0) and height (1/x)
+1 / x * 1 / (1/x) # 1
