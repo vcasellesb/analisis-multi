@@ -61,14 +61,22 @@ f_x_cond_y <- function(x, y){
   y * (1 - 2*x) + 2*x
 }
 x <- seq(0, 1, length=100)
-y <- seq(0,2,length=100)
-z <- outer(x,y,f_x_cond_y)
-persp(x, y, z,
-      theta=30, phi=20,
-      r=50, d=0.1, expand=0.5,
-      ltheta=90, lphi=180,
-      shade=0.75,
-      ticktype="detailed",
-      cex.axis=0.7,
-      zlab="density"
-)
+y <- 1/2
+z <- f_x_cond_y(x,y)
+plot(x, z, type='l')
+
+
+# area should be 1
+b = 1 
+h = 3/2 - 1/2
+b * h / 2
+# But it is not. Why? Because conditional probabilities are unscaled. You have to 
+# scale it by fy(y).
+fy <- 1/2
+z <- z / (1/2)
+plot(x, z, type='l')
+
+# now we see that the triangle has:
+b = 1
+h = 3 - 1
+b*h/2 # 1
