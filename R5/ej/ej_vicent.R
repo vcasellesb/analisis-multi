@@ -53,3 +53,45 @@ N2Y <- t(apply(N2,1,transform,mu1=2,mu2=1,s1=1,s2=1.5,rho=0.6))
 colnames(N2Y) <- c("y1","y2")
 plot(N2Y, pch=19, col=rgb(1,0,0,alpha = 0.3))
 max(abs(Y - N2Y))
+
+# Exercise 6
+n <- 500
+set.seed(1234)
+mu1 <- 0
+mu2 <- 5
+sigma1 <- 2
+sigma2 <- 3
+rho <- 0.5
+
+x1 <- rnorm(n, mean = mu1, sd = sigma1)
+
+E_Y_given_X <- function(x, mu2, sigma1, sigma2, rho, mu1){
+  mu2 + (1/sigma1) * sigma2 * rho * (x - mu1)
+}
+
+E <- E_Y_given_X(x1, mu2, sigma1, sigma2, rho, mu1)
+var_Y_given_X<-function(sigma2, rho){
+  (sigma2**2) * (1-rho**2)
+}
+var <- var_Y_given_X(sigma2, rho)
+s2 <- sigma2
+s2*sqrt(1-rho^2) == sqrt(var)
+ 
+# I didn't know you could pass a vector as the mean parameter for rnorm
+y<-c()
+for (i in 1:n){
+  y <- append(y, values=rnorm(1, mean=E[i], sd=sqrt(var)))
+}
+
+X <- cbind(x1, y)
+colMeans(X)
+
+## ground truth (teacher's implementation)
+rnorm2 <- function(n,mu1,mu2,s1,s2,rho){
+ x1 <- rnorm(n, mu1, s1)
+ x2 <- rnorm(n, mu2 + rho*s2*(x1-mu1)/s1, s2*sqrt(1-rho^2))
+ cbind(x1, x2)
+}
+set.seed(1234)
+smpl <- rnorm2(500,0,5,2,3,0.5)
+all(X == smpl) # TRUE
