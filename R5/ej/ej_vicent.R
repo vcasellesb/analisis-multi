@@ -85,7 +85,7 @@ for (i in 1:n){
 
 X <- cbind(x1, y)
 colMeans(X)
-
+cov(X)
 ## ground truth (teacher's implementation)
 rnorm2 <- function(n,mu1,mu2,s1,s2,rho){
  x1 <- rnorm(n, mu1, s1)
@@ -95,3 +95,66 @@ rnorm2 <- function(n,mu1,mu2,s1,s2,rho){
 set.seed(1234)
 smpl <- rnorm2(500,0,5,2,3,0.5)
 all(X == smpl) # TRUE
+
+# sourcing file with bivden function
+source('../../R1/test/biv.R')
+den <- bivden(x=X[,1], y=X[, 2])
+persp(den$seqx, den$seqy, den$den, xlab="x1 " ,
+       ylab="x2" ,
+       zlab="density",lwd=2, theta=50)
+plot(X[, 1],X[, 2])
+contour(den$seqx,den$seqy,den$den,lwd=2,nlevels=20,add=T)
+
+# Again, teacher's solution
+den1 <- bivden(smpl[,1], smpl[,2])
+persp(den1$seqx, den1$seqy, den1$den, xlab="X1", ylab="X2", zlab="Density",
+      lwd=2, ticktype="detailed", theta=50)
+
+# c)
+plot(X[, 1],X[, 2])
+contour(den$seqx,den$seqy,den$den,lwd=2,nlevels=25,add=T)
+
+# Exercise 7
+# Let's define the density function of a bivariate normal distribution with
+# mean vector \mu and covariance matrix \Sigma
+cov2cor_vc <- function(cov){ # from:
+  # https://math.stackexchange.com/questions/186959/correlation-matrix-from-covariance-mat
+  D <- diag(sqrt(diag(cov)))
+  cor <- solve(D) %*% cov %*% solve(D) 
+  cor
+}
+
+mu1 <- 1
+mu2 <- 2
+sigma1 <- sqrt(4)
+sigma2 <- sqrt(9)
+rho <- 0.5
+x <- seq(from=mu1 - sigma1 * 4, to=mu1 + 4*sigma1, by=0.1)
+y <- seq(from=mu2 - sigma2 * 4, to=mu2 + sigma2 * 4, by=0.1)
+fxy <- function(x,y,mu1,mu2,sigma1, sigma2, rho){
+
+  Q <- ((x-mu1)^2/sigma1^2
+        - 2*rho*(x-mu1)*(y-mu2)/(sigma1*sigma2)
+        + (y-mu2)^2/sigma2^2)/(1-rho^2)
+  1/(2*pi*sigma1*sigma2*sqrt(1-rho^2)) * exp(-Q/2)
+}
+z <- outer(X=x, Y=y, fxy, mu1=mu1, mu2=mu2, sigma1=sigma1, sigma2=sigma2, rho=rho)
+
+persp(x, y, z, col="lightgreen", theta=30, phi=20, r=50, d=0.1, expand=0.5, 
+      ltheta=90, lphi=180, shade=0.75, cex.axis=0.7, ticktype="detailed")
+
+# ground truth
+mu1<-1 
+mu2<-2
+s11<-4
+s12<-3
+s22<-9
+rho<-s12/sqrt(s11*s22)
+x1 <- seq(mu1-4*sqrt(s11), mu1+4*sqrt(s11), by=0.1)
+x2 <- seq(mu2-4*sqrt(s22), mu2+4*sqrt(s22), by=0.1)
+f<-function(x1,x2){
+  Q <- (x1-mu1)^2/s11 - 2*rho*(x1-mu1)*(x2-mu2)/sqrt(s11*s22) + (x2-mu2)^2/s22
+  1/(2*pi*sqrt(s11*s22*(1-rho^2)))*exp(-Q/(2*(1-rho^2)))
+}
+z_profe <- outer(x1,x2,f)
+all(z == z_profe) # TRUE
