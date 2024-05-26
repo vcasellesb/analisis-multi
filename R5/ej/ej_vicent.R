@@ -158,3 +158,18 @@ f<-function(x1,x2){
 }
 z_profe <- outer(x1,x2,f)
 all(z == z_profe) # TRUE
+
+
+# Testing geometric series
+geom <- function(start=1, p = 0.5, inf = 100000){
+  seqit <- seq(start, inf)
+  res <- 0
+  for (x in seqit){
+    tmp <- (x+1) * p * (1-p)**(x-1)
+    res <- tmp + res
+  }
+  res
+}
+
+inf1 = geom(start=2, p=0.5)
+inf2 = geom(start=1, p=0.5)
