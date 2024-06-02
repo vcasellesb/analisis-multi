@@ -173,3 +173,14 @@ geom <- function(start=1, p = 0.5, inf = 100000){
 
 inf1 = geom(start=2, p=0.5)
 inf2 = geom(start=1, p=0.5)
+inf3 = geom(start=1, p=0.5)
+
+
+generate_samples <- function(){
+  x <- runif(n=100000)
+  y <- runif(n=100000, min=0, max=x)
+  
+  cbind(x,y)
+}
+
+x_y <- generate_samples()
