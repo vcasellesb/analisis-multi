@@ -161,6 +161,8 @@ all(z == z_profe) # TRUE
 
 
 # Testing geometric series
+# this shouldn't be here
+# it's from https://www.stat.uchicago.edu/~stigler/Stat244/ch3withfigs.pdf
 geom <- function(start=1, p = 0.5, inf = 100000){
   seqit <- seq(start, inf)
   res <- 0
