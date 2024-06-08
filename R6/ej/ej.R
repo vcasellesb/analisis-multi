@@ -27,6 +27,8 @@ for (i in 1:(nr-1)){
     d[i, j] <- d[j, i] <- sqrt(sum((milk[i,] - milk[j,])**2))
   }
 }
+d
+
 
 
 R_euclid <- function(x, nc, nr, i1, i2){
@@ -53,4 +55,4 @@ R_dist <- function(x){
   }
   res
 }
-R_dist(milk)
+all(R_dist(milk) == unname(d))
