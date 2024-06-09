@@ -43,16 +43,28 @@ R_euclid <- function(x, nc, nr, i1, i2){
   sqrt(res)
 }
 
-R_dist <- function(x){
-  nc <- ncol(x); nr <- nrow(x)
+source('../../funcs/dist.R')
 
-  x <- unname(unlist(c(x))) # convert it to a vector by column
-  res <- matrix(0, nr, nr)
-  for (i1 in 1:(nr-1)){
-    for (i2 in (i1+1):nr){
-      res[i1, i2] <- res[i2, i1] <- R_euclid(x, nc, nr, i1, i2)
-    }
-  }
-  res
-}
-all(R_dist(milk) == unname(d))
+# we use R_dist to calculate euclidean distances
+d <- R_dist(milk)
+rownames(d) <- colnames(d) <- rownames(milk)
+
+# to do MDS, I source B_from_D
+source('../../funcs/MDS.R')
+B <- B_from_D(d)
+evalues <- eigen(B)$values
+
+# this I assume should be the rank (5)
+sum(evalues > 1e-10)
+matrixcalc::matrix.rank(B) # yeah
+
+# we get the first two evectors and evalues
+evecs2 <- eigen(B)$vectors[, 1:2]
+evalues2 <- diag(sqrt(eigen(B)$values[1:2]))
+X <- evecs2 %*% evalues2
+rownames(X) <- rownames(d)
+
+sum(evalues[1:2]) / sum(evalues[1:5])
+
+plot(X,type="n", xlab="PC1",ylab="PC2",xlim=c(-30,50))
+text(X[,1],X[,2],labels=rownames(d),cex=0.8)

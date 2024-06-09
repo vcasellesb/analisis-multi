@@ -56,7 +56,7 @@ R_euclid <- function(x, nc, nr, i1, i2){
   sqrt(res)
 }
 
-R_dist <- function(x, method){
+R_dist <- function(x, method='euclid'){
   nc <- ncol(x); nr <- nrow(x)
   
   dist_func <- switch(
@@ -74,3 +74,5 @@ R_dist <- function(x, method){
   res
 }
 
+# tests
+# all(unname(as.matrix(dist(milk, 'euclidean'))) == R_dist(milk, 'euclid'))
