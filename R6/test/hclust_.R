@@ -160,13 +160,6 @@ dmatrix2 <- matrix(c(0,1,2,4,5,
                      5,5,5,1.2,0),nrow=5)
 
 get_nn_and_distnn(dmatrix2)
-
-iterate_d <- function(d, i, j){
-  # first copy d
-  dim1 <- dim(d)[1]
-  d_new <- matrix(0, nrow=dim1-1, ncol =dim1-1)
-  d_new[]
-}
 # https://github.com/mortcanty/CRCDocker/blob/97d791c131beaaa9b9d4d189d5f61a0384af16f7/src/mlpy-3.5.0/mlpy/hcluster/hc.c#L41
 #ioffst <- function(n, i, j)
 #{
