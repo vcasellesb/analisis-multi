@@ -84,9 +84,9 @@ rownames(pg) <- c("francesa","checa","germánica","vasca","china",
 
 # B distance calculation
 # first we need to calculate frequencies per row.
-freq <- t(t(milk) / rowSums(milk))
+freq <- milk / 100
 # Now we calculate sqrt of this
-Q <- sqrt(freq)
+Q <- sqrt(as.matrix(freq))
 D_BC <- Q %*% t(Q)
 D_BC <- ifelse(D_BC>1, 1, D_BC)
 D_BC <- acos(D_BC)
@@ -99,3 +99,7 @@ X <- evecs2 %*% diag(sqrt(evalues2))
 cmdscale(sqrt(D_BC), eig = T)
 
 
+Q_true <- sqrt(as.matrix(milk)/100)
+BC <- Q %*% t(Q)
+BC <- ifelse(BC>1., 1., BC)
+D2B <- acos(BC)
