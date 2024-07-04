@@ -1,0 +1,1295 @@
+---
+title: "Prova d'avaluació continuada 2"
+author: "Vicent Caselles Ballester"
+date: "`r Sys.Date()`"
+output: pdf_document
+header-includes:
+  - \usepackage{amssymb, amsmath, bm}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\tableofcontents
+
+
+# **Exercici 1**. Inferència multivariant
+
+Carrego les dades a través del paquet `GGally`. 
+
+```{r, message=FALSE}
+# install.packages('GGally')
+require(GGally)
+data(flea)
+str(flea) # observem les variables que hi han al dataset
+```
+
+A l'enunciat s'estipula que només s'utilitzaran les tres darreres variables, així que em desfaig de les restants.
+
+```{r}
+flea <- flea[, 
+             colnames(flea) %in% c("species", paste("aede", seq(1, 3), sep=""))]
+
+```
+
+
+## a) Normalitat univariant de les tres variables a les tres espècies
+
+Per a dur a terme aquest exercici, em baso en l'exemple $6.8$ del document sobre normalitat multivariant proporcionat al campus virtual de l'assignatura. En aquest exemple, per a estudiar la normalitat univariant de múltiples variables es fa servir el test de Shapiro-Wilk. En primer lloc, anem a realitzar els tests per a l'espècie *Chaetocnema concinna*.
+
+```{r, message=FALSE}
+# install.packages('MVN')
+require(MVN)
+species <- character(length = nlevels(flea$species))
+for (l in 1:nlevels(flea$species)){
+  species[l] <- levels(flea$species)[l]
+}
+species1 <- species[1]
+mvn(flea[flea$species==species1, -1], univariateTest = 'SW')$univariateNormality
+```
+
+Veiem que, segons el test de Shapiro-Wilk per a normalitat univariant, la variant `aede2` no segueix una distribució normal. Aquest test estadístic estudia la següent hipòtesi:
+
+$$
+\begin{split}
+H_0: X \sim N (\mu, \sigma^2) \\
+H_1: X \nsim N (\mu, \sigma^2)
+\end{split}
+$$
+
+Aquest fet també ho podem observar dibuixant els `qqplot`s corresponents per a cada una de les variables.
+
+```{r}
+par(mfrow=c(1,3))
+for (i in 1:3){
+  qqnorm(flea[flea$species==species1, i+1])
+  qqline(flea[flea$species==species1, i+1])
+  text(
+    x = -1.5,
+    y = quantile(flea[flea$species==species1, i+1], probs = 0.9999),
+    labels = colnames(flea)[i+1]
+  )
+}
+mtext(paste("Espècie",tolower(species1)), side = 3, line = -1.2, outer=TRUE)
+```
+
+Com podem veure, la variable `aede2`, donat que mesura l'angle entre els *aedeagus* (orgàn reproductor dels artròpodes mascle), només presenta nombres enters, fet que clarament fa que no presenti una distribució normal. Ara anem a realitzar el mateix per a la segona espècie, *Chaetocnema heikertingeri*.
+
+```{r}
+species2<- species[2]
+mvn(flea[flea$species==species2, -1], univariateTest = 'SW')$univariateNormality
+```
+
+Observem que la variable `aede2` tampoc sembla seguir una distribució normal univariant. Per altra banda, la variable `aede3` presenta un p-valor superior a $0.05$, però només lleugerament.
+
+```{r}
+par(mfrow=c(1,3))
+for (i in 1:3){
+  qqnorm(flea[flea$species==species2, i+1])
+  qqline(flea[flea$species==species2, i+1])
+  text(
+    x = -1.5,
+    y = quantile(flea[flea$species==species2, i+1], probs = 0.9999),
+    labels = colnames(flea)[i+1]
+  )
+}
+mtext(paste("Espècie",tolower(species2)), side = 3, line = -1.2, outer=TRUE)
+
+```
+
+Finalment, la tercera espècie, *Chaetocnema heptapotamica*, presenta els tres p-valors superiors a $0.05$. Tot i així, tant `aede1` com `aede2` presenten un p-valor molt proper a aquest tall del $5\%$ de confiança.
+
+```{r}
+species3<- species[3]
+mvn(flea[flea$species==species3, -1], univariateTest = 'SW')$univariateNormality
+```
+
+```{r}
+par(mfrow=c(1,3))
+for (i in 1:3){
+  qqnorm(flea[flea$species==species3, i+1])
+  qqline(flea[flea$species==species3, i+1])
+  text(
+    x = -1.5,
+    y = quantile(flea[flea$species==species3, i+1], probs = 0.9999),
+    labels = colnames(flea)[i+1]
+  )
+}
+mtext(paste("Espècie",tolower(species3)), side = 3, line = -1.2, outer=TRUE)
+```
+
+En resum, es pot observar que la primera espècie (*Chaetocnema concinna*) presenta la primera (`aede1`) i la tercera variable (`aede3`) aparentment amb normalitat univariant, mentre que la segona (`aede2`) no ho és. La segona espècie (*Chaetocnema heikertingeri*) presenta el mateix patró que *concinna*. Finalment, la tercera espècie (*Chaetocnema heptapotamica*) presenta els tres p-valors del test de Shapiro-Wilk de normalitat univariant superiors a $0.05$, encara que la segona variable presenta un p-valor de $0.0504$ (quasi significatiu). Així doncs, sembla evident que podem rebutjar la hipòtesi de normalitat multivariant respecte a les dues primeres espècies ja que, si les distribucións marginals no són normals, la multivariant tampoc ho serà.
+
+## b) Test de Mardia manual
+
+En el següent *chunk*, realitzo un *for loop* en el qual calculo els estadístics que es demanen per a cada una de les espècies. Primer de tot, calculo la següent matriu, a la qual anomeno `res_`.
+
+$$
+\mathrm{res\_} = [(\mathbf{x}_i - \bar{\mathbf{x}})' S^{-1} (\mathbf{x}_i - \bar{\mathbf{x}})]
+$$
+Per a dur a terme el càlcul d'aquesta matriu, utilitzo la matriu de covariànces mostral sesgada, tal i com s'indica a l'apèndix. Un cop calculada `res_`, la utilitzo per a calcular $b_{1,p}$ i $b_{2,p}$, a partir dels quals calculo $\gamma_{1,p}$ i $\gamma_{2,p}$.
+
+```{r}
+p <- ncol(flea[, -1]) # number of variables
+stopifnot(p == 3)
+s <- c()
+k <- c()
+kmejorada <- c()
+for (s_ in species){
+  X <- flea[flea$species == s_, -1] # només variables numèriques
+  n <- nrow(X)
+  
+  mu_hat <- colMeans(X)  # vector de mitjanes
+  S <- cov(X) * (n-1)/n # matriu de covariances sesgada (dividida per n)
+  S_inv <- solve(S)
+  
+  # càlcul res_
+  res_ <- matrix(0, n, n)
+  for (i in 1:n){
+    for (j in i:n){
+      xi <- as.numeric(as.vector(X[i, ])) - mu_hat
+      xj <- as.numeric(as.vector(X[j, ])) - mu_hat
+      res_[i, j] <- t(xi) %*% S_inv %*% xj
+      res_[j, i] <- t(xj) %*% S_inv %*% xi
+    }
+  }
+  
+  # càlcul assimetria
+  b_1p <- (1/n**2) * sum(res_**3) 
+  s <- append(s, n/6 * b_1p)
+  
+  # càlcul kurtosi
+  b_2p <- (1/n) * sum(diag(res_)**2)
+  k_ <- (b_2p - p * (p + 2)) * (sqrt(n/(8 * p * (p + 2))))
+  k <- append(k, k_)
+  
+  # càlcul kurtosi millorada
+  kmejorada_ <- ((b_2p - p*(p+2)*(n-1)*((n+1)**(-1))) / (sqrt(8*p*(p+2)*(n**(-1)))))
+  kmejorada <- append(kmejorada, kmejorada_)
+}
+```
+
+
+```{r, include=FALSE}
+data <- as.matrix(flea[, -1])
+data <- scale(data, scale=FALSE)
+S <- cov(data) * (n-1) / n
+D <- as.matrix(data) %*% solve(S, tol=1e-25) %*% t(data)
+
+
+kurt <- (b_2p - p * (p + 2) * (n - 1)/(n + 1)) * sqrt(n/(8 * 
+    p * (p + 2)))
+```
+
+
+
+Així doncs, si les dades a partir de les que ha sigut calculada l'assimetria provenen d'una distribució normal multivariant, $\gamma_{1,p} = \frac{n}{6} b_{1,p} \sim \chi^2_f$. Anem a comprovar-ho. 
+
+```{r}
+f <- p*(p+1)*(p+2) / 6 # degrees of freedom
+pchisq(s, df=f, lower.tail=F)
+```
+
+Com podem veure, les tres espècies presenten un p-valor superior a $0.05$, així que no podem afirmar que cap d'aquestes espècies no segueixin una distribució normal multivariant (**només tenint en compte aquest apartat**). 
+
+A continuació, comprovo la kurtosis. En aquest cas, si $\mathbf{X}$ segueix una distribució normal multivariant, $b_{2,p} \sim N(0,1)$. Així doncs, calculem amb una confiança del $5\%$ si l'estadístic observat pertany a una distribució normal estàndard:
+
+```{r}
+2 * pnorm(abs(k), lower.tail = F)
+2 * pnorm(abs(kmejorada), lower.tail = F)
+```
+
+Com podem veure, tots els p-valor són superiors a $0.05$. D'aquesta manera, donat que tant els estadístics de kurtosi i de assimetria semblen estar d'acord amb les seves corresponents distribucions en cas de que les dades subjacents provinguessin d'una distribució normal multivariant, podem dir que si que ens trobem en aquesta situació (**només tenint en compte aquest apartat**). 
+
+Tot i això, tenint en compte els resultats de l'apartat anterior, on a les espècies *Concinna* i *Heikert.* la variable `aede2` no presenta normalitat univariant, llavors no podríem realitzar aquesta afirmació de que hi ha normalitat multivariant, ja que les distribucions marginals de dues de les tres variables no són normals. Finalment, l'espècie *Heptapot.*, com que tots els tests de normalitat univariant de l'apartat anterior han resultat no significatius (per tant no podem rebutjar $H_0$), si que podríem realitzar aquesta afirmació. Tot i això, em sembla que el p-valor del test de Shapiro-Wilk i el `qqplot` corresponents a la variable `aede2` són massa ajustats per a estar-ne molt convençut.
+
+Gathering further evidence:
+
+De l'apartat $2.2.8$ del document de Normal Multivariant distribuït al campus virtual de l'assignatura, tenim que:
+
+>> Si $\mathbf{x} \sim N(\mathbf{\mu}, \Sigma)$, llavors $(\mathbf{x}-\mathbf{\mu})'\Sigma^{-1}(\mathbf{x} - \mathbf{\mu}) \sim \chi^2$. 
+
+Anem a comprovar-ho. Hem de calcular la distància de mahalanobis ($D^2$) de cada observació.
+
+```{r}
+X <- flea[flea$species==species1, -1]
+it <- nrow(X)
+muhat <- colMeans(X)
+sigma_minus_1 <- solve(cov(X))
+ds <- numeric(it)
+for (i in 1:it){
+  xi <- as.numeric(as.vector(X[i,]))
+  ds[i] = t(xi - muhat) %*% sigma_minus_1 %*% (xi - muhat)
+}
+
+```
+
+Ara vaig a realitzar el gràfic dels $D^2$ observats versus els quantils $\chi^2$ corresponents. Copio el codi de la funció `MVN::mvn`.
+
+```{r}
+r <- rank(ds)
+p <- ncol(X)
+chi2q <- qchisq((r - 0.5)/it, p)
+
+plot(ds, chi2q, pch = 19, main = "Chi-Square Q-Q Plot", 
+          xlab = "Squared Mahalanobis Distance", ylab = "Chi-Square Quantile")
+abline(0, 1, lwd = 2, col = "black")
+```
+
+Comprovo que obtenim el mateix que utilitzant la funció `MVN::mvn` directament, seguint l'exemple $6.9$ del document de Normal Multivariant que porto mencionant tota la PAC.
+
+```{r,  echo=TRUE,results='hide',fig.keep='all'}
+mvn(flea[flea$species==species1, -1], multivariatePlot = "qq")
+```
+
+Veiem que obtenim el mateix. Com podem observar, força distàncies s'allunyen del seu quantil esperat, però no sembla molt greu. L'última distància sembla un *outlier*. Anem a dur a terme el mateix però per a la espècie *Heikert.*.
+
+```{r}
+X <- flea[flea$species==species2, -1]
+it <- nrow(X)
+muhat <- colMeans(X)
+sigma_minus_1 <- solve(cov(X))
+ds <- numeric(it)
+for (i in 1:it){
+  xi <- as.numeric(as.vector(X[i,]))
+  ds[i] = t(xi - muhat) %*% sigma_minus_1 %*% (xi - muhat)
+}
+```
+
+
+```{r}
+r <- rank(ds)
+p <- ncol(X)
+chi2q <- qchisq((r - 0.5)/it, p)
+
+plot(ds, chi2q, pch = 19, main = "Chi-Square Q-Q Plot", 
+          xlab = "Squared Mahalanobis Distance", ylab = "Chi-Square Quantile")
+abline(0, 1, lwd = 2, col = "black")
+```
+
+Sembla que aquesta espècie té un millor *fit* a la recta, en quant a les distàncies. Finalment, duc a terme el mateix procediment per a la tercera espècie, *Heptapot.*.
+
+```{r}
+X <- flea[flea$species==species3, -1]
+it <- nrow(X)
+muhat <- colMeans(X)
+sigma_minus_1 <- solve(cov(X))
+ds <- numeric(it)
+for (i in 1:it){
+  xi <- as.numeric(as.vector(X[i,]))
+  ds[i] = t(xi - muhat) %*% sigma_minus_1 %*% (xi - muhat)
+}
+```
+
+```{r}
+r <- rank(ds)
+p <- ncol(X)
+chi2q <- qchisq((r - 0.5)/it, p)
+
+plot(ds, chi2q, pch = 19, main = "Chi-Square Q-Q Plot", 
+          xlab = "Squared Mahalanobis Distance", ylab = "Chi-Square Quantile")
+abline(0, 1, lwd = 2, col = "black")
+```
+
+Veiem que el millor ajustament a la recta teòrica correspon a les dues espècies que comencen per H, *Heikert.* i *Heptapod.*.
+
+## c) Utilitzant el paquet `MVN`
+
+Investigant sobre el test de Mardia, he trobat que no només el paquet `MVN` l'implementa, sino també el paquet `mvnormalTest`. La diferència és que el primer implementa la versió *no millorada* de la kurtosi, mentre que el segon implementa la versió *milorada* ($MK$).
+
+```{r}
+mvn(flea[flea$species==species1, -1], mvnTest='mardia')$multivariateNormality
+c(assym=s[1], pval=pchisq(s, df=f, lower.tail=F)[1]) # assimetria espècie Concinna
+c(kurt=k[1], pval=2 * pnorm(abs(k), lower.tail = F)[1]) # kurtosi espècie Concinna
+```
+
+Veiem que la assimetria i la kurtosi *no millorada* coincideixen. Anem a comprovar ara la kurtosi *millorada*.
+
+```{r}
+mvnormalTest::mardia(X=flea[flea$species==species1, -1])$mv.test
+c(kurt_mej=kmejorada[1],  pval=2 * pnorm(abs(kmejorada), lower.tail = F)[1]) # espècie Concinna 
+```
+Vaig a repetir el mateix per a les altres espècies.
+
+```{r}
+mvn(flea[flea$species==species2, -1], mvnTest='mardia')$multivariateNormality
+c(assym=s[2], pval=pchisq(s, df=f, lower.tail=F)[2]) # assimetria espècie Heikert.
+c(kurt=k[2], pval=2*pnorm(abs(k), lower.tail = F)[2]) # kurtosi espècie Heikert.
+```
+```{r}
+mvnormalTest::mardia(X=flea[flea$species==species2, -1])$mv.test
+c(kurt_mej=kmejorada[2],  pval=2*pnorm(abs(kmejorada), lower.tail = F)[2]) # espècie Heikert.
+```
+
+Per a l'espècie *Heikert.* també coincideix, estic content. Falta l'última espècie.
+
+```{r}
+mvn(flea[flea$species==species3, -1], mvnTest='mardia')$multivariateNormality
+c(assym=s[3], pval=pchisq(s, df=f, lower.tail=F)[3]) # assimetria espècie Heptapot.
+c(kurt=k[3], pval=2*pnorm(abs(k), lower.tail = F)[3]) # kurtosi espècie Heptapot.
+```
+
+```{r}
+mvnormalTest::mardia(X=flea[flea$species==species3, -1])$mv.test
+c(kurt_mej=kmejorada[3],  pval=2*pnorm(abs(kmejorada), lower.tail = F)[3]) # espècie Heptapod.
+```
+Efectivament, tots els resultats coincideixen en les tres espècies, tant en el cas de l'assimetria, com en el de la kurtosi *millorada* i la *no millorada*.
+
+## d) Evaluant `psych::mardia`
+
+Recalculo els resultats de l'apartat b) amb la matriu de covariances insesgada.
+
+```{r}
+p <- ncol(flea[, -1])
+stopifnot(p == 3)
+s <- c()
+k <- c()
+kmejorada <- c()
+for (s_ in species){
+  X <- flea[flea$species == s_, -1]
+  n <- nrow(X)
+  
+  mu_hat <- colMeans(X)
+  S <- cov(X) # unbiased
+  S_inv <- solve(S)
+  
+  res_ <- matrix(0, n, n)
+  for (i in 1:(n)){
+    for (j in (i):n){
+      xi <- as.numeric(as.vector(X[i, ])) - mu_hat
+      xj <- as.numeric(as.vector(X[j, ])) - mu_hat
+      res_[i, j] <- t(xi) %*% S_inv %*% xj
+      res_[j, i] <- t(xj) %*% S_inv %*% xi
+    }
+  }
+  
+  # skewness
+  b_1p <- (1/n**2) * sum(res_**3)
+  s <- append(s, n/6 * b_1p)
+  
+  # kurtosis
+  b_2p <- (1/n) * sum(diag(res_)**2)
+  k_ <- (b_2p - p * (p + 2)) * (sqrt(n/(8 * p * (p + 2))))
+  k <- append(k, k_)
+  
+  # kurtosis millorada
+  kmejorada_ <- ((b_2p - p*(p+2)*(n-1)*((n+1)**(-1))) / (sqrt(8*p*(p+2)*(n**(-1)))))
+  kmejorada <- append(kmejorada, kmejorada_)
+}
+```
+
+Ara amb la funció `mardia` del paquet `psych`.
+
+```{r}
+c(true=psych::mardia(flea[flea$species==species1, -1], plot=F)$skew, mine=s[1])
+```
+Veiem que coincideix la *skewness* entre ambdós mètodes per a la espècie *Concinna*.
+
+
+En el cas de la espècie *Heikert.*, ho realitzo a continuació.
+```{r}
+c(true=psych::mardia(flea[flea$species==species2, -1], plot=F)$skew, mine=s[2])
+```
+
+Finalment, realitzem el mateix per a la tercera i última espècie.
+
+```{r}
+c(true=psych::mardia(flea[flea$species==species3, -1], plot=F)$skew, mine=s[3])
+```
+
+Veiem que és així el que diu l'enunciat. No mostro els resultats complerts de cada test ja que són els mateixos que abans, cap p-valor dona significatiu (< $0.05$).
+
+## e) Comparació de matrius de covariances
+
+Per a dur a terme aquest exercici, em baso en l'exercici $18$ del tema R$5$. Primer de tot, calculem els diferents nombres d'observacions de cada grup.
+
+```{r}
+p <- 3 # número de variables
+n1 <- nrow(flea[flea$species==species1, ])
+n2 <- nrow(flea[flea$species==species2, ])
+n3 <- nrow(flea[flea$species==species3, ])
+n <- nrow(flea)
+
+stopifnot((n1+n2+n3) == n)
+```
+
+Ara calculo les matrius de variança-covariança insesgades, a partir de les quals calculo les sesgades (de màxima verisimilitud), necessàries per a realitzar el test de raó de verosimilituds.
+
+```{r}
+# càlcul S insesgada; càlcul S sesgada
+S1 <- cov(flea[flea$species == species1, -1]); S1 <- (n1-1)*S1/n1
+S2 <- cov(flea[flea$species == species2, -1]); S2 <- (n2-1)*S2/n2
+S3 <- cov(flea[flea$species == species3, -1]); S3 <- (n3-1)*S3/n3
+```
+
+Ara calculem la matriu de covariances comú.
+
+```{r}
+# matriu cov comú
+S <- (n1*S1 + n2*S2 + n3*S3) / n
+```
+
+
+```{r, include=FALSE}
+# Trying out stuff
+S1_b <- cov(flea[flea$species==species1, -1])
+S2_b <- cov(flea[flea$species==species2, -1])
+S3_b <- cov(flea[flea$species == species3, -1])
+S_b <- ((n1-1)*S1_b + (n2-1)*S2_b + (n3-1)*S3_b) / (n1+n2-3)
+
+S1mv <- ((n1-1)*S1_b)/n1; S2mv <- ((n2-1)*S2_b)/n2; S3mv <- ((n3-1)*S3_b)/n3
+Smv_b <- (n1*S1mv + n2*S2mv + n3*S3mv)/(n1+n2+n3)
+```
+
+Ara calculem el test de *Bartlett* multivariant, que modela:
+$$
+n \log |\mathbf{S}| - n_1 \log |\mathbf{S}_1| - n_2 \log |\mathbf{S}_2| - n_3 \log |\mathbf{S}_3| \sim \chi^2
+$$
+```{r}
+llr <- n * log(det(S)) - n1 * log(det(S1)) - n2 * log(det(S2)) - n3 * log(det(S3))
+pchisq(llr, df=(3-1)*p*(p+1)/2, lower.tail=F)
+```
+
+Com podem veure, el p-valor és superior a $0.05$, així que no podem rebutjar la hipòtesi nula (homogeneitat de matriu de covariances amb el factor espècie). Utilitzant el test $M$ de Box:
+
+```{r}
+heplots::boxM(flea[,-1], flea$species)
+```
+Aquest test reforça les nostres conclusions extretes a partir del test de raó de verosimilituds.
+
+## f) MANOVA d'un factor
+\label{1f}
+Per a poder realitzar un anàlisi de variança multivariant robust, s'han de complir les següents condicions:
+\begin{itemize}
+\item Les observacions han de ser independents
+\item Les dades han de provenir d'una distribució amb matriu de covariances $\mathbf{\Sigma}$ comú.
+\item Les dades segueixen una distribució normal multivariant.
+\end{itemize}
+
+La assumpció amb la que més dubtes tinc és la final, ja que hem vist que no en tots els grups (espècies) es compleix que les variables provinguin d'una distribució normal multivariant. Tot i això, vaig a observar els resultats.
+
+```{r}
+Y <- as.matrix(flea[, -1])
+g <- manova(cbind(aede1, aede2, aede3) ~ species, data=flea)
+
+summary(g)
+```
+Així doncs, veiem que amb aquest anàlisi d'anova multivariant hi ha alguna espècie amb un vector de mitjanes $\mathbf{\mu}_i$ diferent a les altres, i.e. $\exists \ i, j \colon \mathbf{\mu}_i \ne \mathbf{\mu}_j$, on $i$ i $j$ indiquen les espècies.
+
+Aquest apartat també es podria dur a terme amb el test de Wilks. Vaig a realitzar-lo manualment i a comprovar els resultats, tal i com es fa a l'apartat c) de l'exercici $16$ dels exercicis d'Inferència Multivariant. Per a això necessitaré una sèrie de funcions. Aquestes van ser escrites durant l'estudi de l'apartat `R7` de l'assignatura, i les he adaptat per a poder-les utilitzar per a aquest apartat i a l'apartat $3$d) de la present PAC. Calculen les matrius de *sums of squares* i *cross-products* intra-grups (*within*, `W`) i total (a partir de les quals es pot obtenir la inter-groups (*between*, `B`)).
+
+```{r}
+## Funció que separa el dataframe
+separate_df <- function(df, f){
+  n <- nlevels(f)
+  l <- levels(f)
+  splitted <- list()
+  for (i in 1:n){
+    splitted[[l[i]]] <- data.matrix(df[f == l[i], ])
+  }
+  splitted
+}
+
+total_variance_helper <- function(x, colmeans){
+  sweep(x, 2, STATS=colmeans, FUN = "-")
+}
+
+within_variance_helper <- function(x){
+  colmeans <- colMeans(x)
+  sweep(x, 2, STATS=colmeans, FUN='-')
+}
+
+sum_of_squares <- function(df, f, mode = 'total', sum_ = TRUE){
+  mode <- tolower(mode)
+  f <- as.factor(f)
+  separated <- separate_df(df, f)
+  if (mode == 'total'){
+    substracted <- lapply(separated, FUN = total_variance_helper, 
+                          colmeans=colMeans(df))
+  }
+  else if (mode == 'within'){
+    substracted <- lapply(separated, FUN = within_variance_helper)
+  }
+  else if (mode == 'all'){
+    if (!sum_) stop('Not implemented') # fa mandra
+    else{
+      W = sum_of_squares(df, f, mode='within', sum_=sum_)
+      T_ = sum_of_squares(df, f, mode='total', sum_=sum_)
+      return(list(
+          W = W,
+          T_ = T_,
+          B = T_ - W
+          ))
+    }
+  }
+  else {stop(paste('Non-implemented mode:', mode))}
+  
+  k <- nlevels(f)
+  res <- if (sum_) matrix(0, ncol(df), ncol(df)) else list()
+  for (j in 1:k){
+    tmp <- substracted[[j]]
+    if (sum_){
+      res <- res + t(tmp)%*%tmp
+    }
+    else res[[j]] <- t(tmp)%*%tmp
+  }
+  res
+}
+```
+
+
+Ara, utilitzant aquestes funcions, calculo les matrius de *sums of squares* i *cross-products* requerides, a partir de les quals calculo la lambda de Wilks ($\Lambda$) i l'estadístic de Fisher.
+
+```{r}
+tmp <- sum_of_squares(df=Y, f=flea$species, mode = 'all')
+W_ <- tmp$W; T_ <- tmp$T_; B_ <- tmp$B
+```
+
+```{r, echo=FALSE}
+T_v2 <- sum_of_squares(df=Y, f=flea$species, mode = 'total'); stopifnot(all(T_v2 == T_))
+W_v2 <- sum_of_squares(df=Y, flea$species, mode = 'within'); stopifnot(all(W_v2 == W_))
+B_v2 <- T_ - W_; stopifnot(all(B_ == B_v2))
+```
+
+```{r}
+# source: https://online.stat.psu.edu/stat505/lesson/8/8.3
+lambda <- det(W_) / det(W_+B_)
+N <- nrow(flea)
+g <- nlevels(flea$species)
+a <- N - g  - (p-g+2)*1/2
+b <- ((p**2)*((g-1)**2) - 4)/((p**2) + ((g-1)**2) - 5)
+b <- sqrt(b)
+c <- (p*(g-1) - 2) * 1/2
+df1 <- p * (g-1)
+df2 <- a*b - c 
+F_ <- ((1 - (lambda**(1/b)))/(lambda**(1/b))) * ((a*b - c)/(p * (g-1)))
+p.val <- pf(F_,df1,df2,lower.tail=FALSE)
+
+c(lambda_wilks=lambda, F_stat=F_, pval=p.val)
+
+maov1 <- manova(cbind(aede1, aede2, aede3) ~ species, data=flea)
+summary(maov1, test="Wilks")
+```
+Així doncs, ens dóna el mateix. En resum, hi ha diferències entre les espècies per a les variables `aede1`, `aede2`, `aede3`.
+
+## g) *Pairwise comparisons*
+
+Responent a la pregunta de si és necessari fer ajustaments per a comparacions múltiples, jo diria que si, ja que estem intentant fer inferència múltiples vegades, fet que pot inflar l'error de tipus $I$ (rebutjar alguna $H_0$ sent aquesta certa).
+
+Per a dur a terme les *pairwise comparisons*, he fet una mica de recerca a internet i he trobat una funció del paquet `biotools` que permet dur a terme aquest anàlisi de manera fàcil, amb ajustament de p-valors implementat.
+
+```{r}
+g <- manova(cbind(aede1, aede2, aede3) ~ species, data=flea)
+biotools::mvpaircomp(g, factor1='species', test="Pillai", adjust='bonferroni')
+```
+A més a més, per a poder prendre conclusions més segures, vaig a fer comparacions *two-vs-two* amb l'estadístic $T^2$ de Hotelling, que modela les distàncies mahalanobis entre les mitjanes mostrals i la covariança comú amb aquesta distribució. Primer de tot, comparo les mitjanes de l'espècie *Concinna* i *Heikert.*.
+
+```{r}
+# separo les dades
+X_c <- flea[flea$species==species1, -1]
+X_hei <- flea[flea$species==species2, -1]
+n_c <- nrow(X_c)
+n_hei <- nrow(X_hei)
+p <- ncol(X_hei); stopifnot(p == ncol(X_c))
+
+# vectors de mitjanes
+mu_hat_c <- colMeans(X_c)
+mu_hat_hei <- colMeans(X_hei)
+S_c <- cov(X_c) # covariances
+S_hei <- cov(X_hei) # covariances
+S_chei <- ((n_c-1) * S_c + (n_hei - 1)*S_hei)/(n_c+n_hei-2) # cov comú
+
+# diferències de les mitjanes (dist mahalanobis)
+D2_chei <- t(mu_hat_c - mu_hat_hei) %*% solve(S_chei) %*% (mu_hat_c - mu_hat_hei)
+
+T2_chei <- n_c*n_hei/(n_c+n_hei) * as.numeric(D2_chei) # hotelling stat
+F_chei <- (n_c + n_hei - p - 1) / ((n_c + n_hei - 2)*p) * T2_chei # fstat
+p.val_chei <- pf(F_chei, p,  # guardo el pvalor
+                 n_c+n_hei-p-1,
+                 lower.tail=FALSE)
+```
+
+En segon lloc, calculo *Concinna* i *Heptapot.*
+
+```{r}
+# idem
+X_hepta <- flea[flea$species == species3, -1]; stopifnot(p == ncol(X_hepta))
+n_hepta <- nrow(X_hepta)
+mu_hat_hepta <- colMeans(X_hepta)
+S_hepta <- cov(X_hepta)
+S_chepta <- ((n_c - 1)*S_c + (n_hepta - 1)*S_hepta)/(n_c + n_hepta - 2)
+
+# diferències de les mitjanes (dist mahalanobis)
+D2_chepta <- t(mu_hat_hepta - mu_hat_c) %*% solve(S_chepta) %*% (mu_hat_hepta-mu_hat_c)
+T2_chepta <- n_c*n_hepta/(n_c+n_hepta) * as.numeric(D2_chepta) # hotelling stat
+F_chepta <- (n_c + n_hepta - p - 1) / ((n_c + n_hepta - 2) * p) * T2_chepta # fstat
+p.val_chepta <- pf(F_chepta, p, n_c + n_hei - p - 1, lower.tail=FALSE)
+```
+
+Lastly, entre *Heikert.* i *Heptapot.*.
+```{r}
+S_heptahei <- ((n_hepta-1)*S_hepta + (n_hei-1)*S_hei)/(n_hepta + n_hei - 2)
+
+# mahalanobis distances between sample means
+D2_heptahei <- t(mu_hat_hepta - mu_hat_hei) %*% solve(S_heptahei) %*% (mu_hat_hepta-mu_hat_hei)
+T2_heptahei <- n_hepta*n_hei/(n_hepta+n_hei) * as.numeric(D2_heptahei) # hotelling stat
+F_heptahei <- (n_hepta+n_hei - p - 1) / ((n_hepta + n_hei - 2)*p)*T2_heptahei # f stat
+p.val_heptahei <- pf(F_chepta, p, n_hepta+n_hei-p-1, lower.tail=FALSE)
+```
+
+Realitzo ajustament per a comparacions múltiples. S'utilitza l'ajustament de Bonferroni (*default*), que bàsicament múltiplica `n * p`.
+
+```{r}
+p.adjust(c(p.val_chei, p.val_chepta, p.val_heptahei))
+```
+
+Comprovo que ho hagi fet bé amb el la funció `hotelling.test` del paquet `Hotelling`.
+
+```{r}
+t=Hotelling::hotelling.test(x=as.matrix(X_c), y=as.matrix(X_hepta))
+stopifnot(abs(t$stats[1]$statistic - T2_chepta) < 1e-10)
+
+t=Hotelling::hotelling.test(x=as.matrix(X_hei), y=as.matrix(X_hepta))
+stopifnot(abs(t$stats[1]$statistic - T2_heptahei) < 1e-10)
+
+t=Hotelling::hotelling.test(x=as.matrix(X_hei), y=as.matrix(X_c))
+stopifnot(abs(t$stats[1]$statistic - T2_chei) < 1e-10)
+```
+
+Veiem que els resultats son gairebé els mateixos, en quant a l'estadístic. En definitiva, hi han diferències entre els vectors de mitjanes de totes les espècies.
+
+\newpage
+# **Exercici 2**. Anàlisi discriminant
+
+## a) Reducció del conjunt de dades i gràfic `pairs`
+
+Recarrego el conjunt de dades i faig el *subset* tal i com es demana.
+
+```{r}
+data(flea, package='GGally')
+flea <- flea[(flea$species == species1 | flea$species == species2), 1:4]
+
+# agafem els 10 primers individus de cada espècie Concinna i Heikert. per al conjunt training
+w <- which(flea$species == "Concinna")[1]
+w2 <- which(flea$species=="Heikert.")[1]
+training <- flea[c(w:(w+9), w2:(w2+9)), ]
+
+# la resta serà test
+test <- flea[c((w+10):(w2-1), (w2+10):nrow(flea)) , ]
+stopifnot(nrow(flea) == nrow(test) + nrow(training)) # check
+```
+
+```{r, echo=FALSE}
+check_messed_up <- function(v1, v2){
+  return(length(intersect(v1, v2))>0)
+}
+stopifnot(!check_messed_up(rownames(training), rownames(test)))
+m2 <- check_messed_up(c("Paco", "Isabel"), c("Isabel", "Juanjo"))
+```
+
+
+Ara realitzo el gràfic amb `pairs` tal i com es demana.
+
+```{r}
+pairs(flea[,-1], col = hcl.colors(3, "Temps")[flea$species])
+```
+
+Veiem que hi ha una certa correlació positiva entre les variables. Això té sentit, ja que les tres variables són mesures de tamany, les dues primeres referents a les cames i la tercera al cap. Respecte al gràfic, sembla que ha de ser força *fàcil* separar entre les dues classes (cian: *Concinna*; verd: *Heikert.*).
+
+A continuació il·lustro aquesta correlació, i lo relativament fàcil que hauria de ser (aparentment\footnote{He de dir que he provat de realitzar un anàlisi discriminant a partir de les dues primeres components principals (les que mostro en el gràfic de la següent pàgina), tant amb la descomposició a partir de la matriu de covariances, com a partir de la matriu de correlacions, i cap de les dues aproximacions han millorat els resultats obtinguts amb les dades \textit{raw}. És més, les prediccions del conjunt \textit{test} obtingudes després de dur a terme l'anàlisi discriminant a partir de les components principals extretes de la matriu de covariances resulten en exactament la mateixa taula de confusió (matriu de confusió) que utilitzant les dades \textit{raw} -- això deu ser degut a les propietats d'anàlisi discriminant lineal i PCA que ara mateix se'm escapen (deu estar relacionat amb que PCA és una transformació lineal de les dades, el mateix tipus de transformació que utilitza LDA), però m'agradaria entendre-ho, si pogués ser respost (\url{vcasellesb@uoc.edu}).}) aquesta separació entre les dues espècies, mitjançant una descomposició en les dues primeres components principals, que expliquen més d'un $90\%$ de la variança de les dades.
+
+```{r}
+pca_ <- princomp(flea[, -1], scores = TRUE)
+y <- pca_$scores[, 1:2]
+
+plot(y[, 1], y[, 2], 
+     xlab = "Component 1",
+     ylab = "Component 2",
+     main = paste("Variança explicada: ", 
+                  round(cumsum(pca_$sdev)/sum(pca_$sdev), 2)[2] * 100, "%", sep=""),
+     pch = c(1, 3)[as.numeric(flea$species)],
+     col = c('green', 'red')[as.numeric(flea$species)])
+
+```
+
+## b) Contrast d'homogeneitat de variances
+
+Com que estic cansat de calcular el test `llr`, vaig a escriure una funció que ho faci.
+
+```{r}
+cov_equality_check <- function(X, group){
+  
+  X <- as.matrix(X)
+  group <- as.factor(as.character(group))
+  
+  p <- ncol(X)
+  n <- nrow(X)
+  nlev <- nlevels(group)
+  lev <- levels(group)
+  
+  covs <- list()
+  cov_comm <- 0
+  llr_tmp <- 0
+  
+  for (l in 1:nlev){
+    tmp <- cov(X[group == lev[l], ])
+    n_l <- sum(group==lev[l])
+    covs[[l]] <- tmp * (n_l-1) / n_l
+    cov_comm <- cov_comm + n_l * covs[[l]]
+    llr_tmp <- llr_tmp + n_l * log(det(covs[[l]]))
+  }
+  
+  cov_comm <- cov_comm / n
+  
+  llr <- n * log(det(cov_comm)) - llr_tmp
+  dfs <- (nlev - 1) * p * (p + 1) / 2
+  p_val <- pchisq(llr, df = dfs, lower.tail=FALSE)
+  
+  return(list(
+    llr=llr, 
+    df=dfs, 
+    pval=p_val)
+  )
+}
+
+res <- cov_equality_check(flea[, -1], flea$species)
+res
+```
+
+M'ha anat molt bé escriure la funció, ja que anteriorment em donava resultats excessivament diferents entre `boxM` de `heplots` i calculant-ho amb la *log-likelihood*.
+
+```{r}
+heplots::boxM(flea[, -1], droplevels(flea$species))
+```
+
+Així doncs, sembla ser que no hi ha diferències entre les matrius de covariances d'ambdós grups. No ho mostro, però també ho he calculat amb el conjunt de dades `training` que he separat anteriorment i també resulta un p-valor superior a $0.05$. Tot i això, per dur a terme anàlisi discriminant, tinc entès que s'ha de complir la assumpció de normalitat multivariant.
+
+```{r}
+MVN::mvn(data=flea[flea$species=='Concinna', -1], univariateTest = 'SW')$univariateNormality
+MVN::mvn(data=flea[flea$species=='Concinna', -1], mvnTest = 'mardia')$multivariateNormality
+```
+
+Veiem que, per a la espècie *Concinna*, si que es compleix la normalitat univariant i multivariant. Anem a comprovar-ho per a l'altra espècie d'aquest apartat, *Heikert.*.
+
+```{r}
+MVN::mvn(data=flea[flea$species=='Heikert.', -1], univariateTest = 'SW')$univariateNormality
+MVN::mvn(data=flea[flea$species=='Heikert.', -1], mvnTest = 'mardia')$multivariateNormality
+```
+
+També es compleix. Així doncs, entenc que podriem procedir a dur a terme anàlisi discriminant sense problemes. Finalment, per a determinar si està justificat l'anàlisi discriminant, duc a terme un anàlisi `MANOVA` d'acord a l'espècie.
+
+```{r}
+m <- manova(cbind(tars1, tars2, head) ~ species, data=flea)
+summary(m, test="Wilks")
+```
+
+Veiem que el resum del test `MANOVA` indica que hi ha diferències en les mitjanes de les tres variables d'acord a la espècie, així que està justificat dur a terme un anàlisi discriminant.
+
+## c) Anàlisi discriminant
+
+Duc a terme l'anàlisi discriminant amb la funció `lda` del paquet `MASS`, amb les probabilitats *prior* com a $0.5$ per a les dues espècies, tal i com es demana a l'enunciat.
+
+```{r}
+lda_ <- MASS::lda(training[, -1], 
+                  grouping=droplevels(training$species), 
+                  prior=c(0.5,0.5))
+```
+
+## d) Probabilitats *a posteriori*
+
+Per a obtenir les probabilitats *a posteriori*, utilitzo la funció `predict` amb l'objecte generat a l'apartat anterior com a argument (predicció de les dades training) .
+
+```{r}
+post <- predict(lda_)$posterior
+post
+```
+Podem veure si el conjunt de dades *training* ha sigut predit efectivament.
+
+```{r}
+pred_tr <- apply(post, MARGIN=1, FUN=which.max)
+# 1 == TRUE
+cbind(pred=pred_tr, 
+      true=as.numeric(training$species), 
+      match=pred_tr == as.numeric(training$species))
+```
+
+Efectivament, les prediccions són $100\%$ acertades (menys mal, és el conjunt amb el qual hem dut a terme l'anàlisi).
+
+## e) Prediccions
+
+Predim les espècies de les dades *test* a continuació.
+
+```{r}
+pred <- predict(lda_, newdata=as.matrix(test[, -1]))
+
+pred_c <- pred$class
+table(predicció=pred_c, true=droplevels(test$species))
+```
+
+Com veiem, hi han $4$ subjectes que han sigut erròniament classificats com a *Concinna*, quan eren realment *Heikert.*. En canvi, tots els *Heikert.* han sigut correctament classificats. Així doncs, l'*error rate* és de:
+
+```{r}
+t <- table(predicció=pred_c, true=droplevels(test$species)) 
+(1- sum(diag(t)) / sum(t)) * 100
+```
+
+$12.5 \%$. Aquest resulta força alt.
+
+## f) `partimat`
+
+A continuació duc a terme els gràfics resultats de classificació respecte a tot el *dataset* mitjançant anàlisi discriminant lineal.
+
+```{r}
+klaR::partimat(droplevels(species) ~ cbind(tars1, tars2, head), data=flea, method='lda')
+```
+
+Ara ho duc a terme mitjançant anàlisi discriminant quadràtic.
+
+```{r}
+klaR::partimat(droplevels(species) ~ cbind(tars1, tars2, head), data=flea, method='qda')
+```
+
+Veiem que, en ambdós casos, els millors resultats s'obtenen utilitzant les variables `tars1` i `head`. Jo triaria el mètode lineal, ja que utilitzant mètodes no lineals augmenta bastant la probabilitat de fer *overfitting*, i també augmenta la complexitat del model. A més a més, els resultats del model quadràtic no milloren els del lineal (el mínim de *error rate* és el mateix en els dos casos, $0.038$). 
+
+```{r, include=FALSE}
+pca_ <- princomp(x=training[, -1], scores=TRUE, cor = TRUE)
+y <- pca_$scores[, 1:2]
+lda_w_pca <- MASS::lda(y, grouping=droplevels(training$species), prior=c(0.5, 0.5))
+evecs <- as.matrix(pca_$loadings)
+
+test_decomposed <- scale(as.matrix(test[, -1]), scale=TRUE, center=TRUE) %*% evecs[, 1:2]
+
+pred <- predict(lda_w_pca, newdata=test_decomposed)
+
+pred_c <- pred$class
+table(predicció=pred_c, true=droplevels(test$species))
+```
+
+
+\newpage
+
+# **Exercici 3**. Anàlisi de conglomerats
+
+Llegeixo les dades.
+
+```{r}
+wood <- read.table('wood.txt')
+```
+
+
+## a) Anàlisi jeràrquic aglomeratiu amb distàncies euclídies i *complete linkage*
+
+Primer de tot calculo les distàncies euclídies, i genero l'objecte `hclust` amb la funció homònima.
+```{r}
+d <- dist(wood)
+clust <- hclust(d=d, method = 'complete')
+```
+
+Utlitzant `plot` i `rect.hclust`, puc graficar el dendograma generat per `hclust` i marcar els $6$ *clusters* que es demanen a l'enunciat.
+
+```{r}
+plot(clust)
+x <- rect.hclust(clust, k=6)
+```
+
+Guardo els resultats del *call* a `rect.hclust`, que bàsicament són una llista amb els indexos (*sites* de mostreig del *dataset*) i el *cluster* al que correspon cada un, per a dur a terme els apartats subseqüents.
+
+## b) Anàlisi de variança amb el factor *cluster*
+ 
+Vaig a *parsejar* a quin d'aquests $6$ *clusters* pertany cada observació. Recordem, `x` conté una llista amb els clusters i els índexos (observacions, *sites*) que pertanyen a cada un d'aquests.
+ 
+```{r}
+cl <- 1
+sixclusters <- numeric(length=nrow(wood))
+for (l in x){
+  indexes <- unname(l)
+  sixclusters[indexes] <- cl
+  cl <- cl + 1
+}
+```
+ 
+Ara tinc un vector que conté el *cluster* obtingut anteriorment al que pertany cada una de les observacions. Vaig a afegir-lo al *dataframe* `wood`.
+
+```{r}
+wood$sixclust <- as.factor(sixclusters)
+```
+
+
+```{r}
+species <- pval <- F_stat <- numeric(ncol(wood) - 1) # no m'interessa sixclust 
+for (i in 1:(ncol(wood)-1)){
+  aov_ <- summary(aov(wood[, i] ~ wood$sixclust))
+  species[i] <- colnames(wood)[i]
+  pval[i] <- aov_[[1]][["Pr(>F)"]][1] # extret de stackoverflow (no se quina entrada exactament)
+  F_stat[i] <- aov_[[1]][["F value"]][1]
+}
+
+pval <- p.adjust(pval, method='bonferroni') # ajustem els p-valors
+```
+
+Genero la taula que es demana a continuació.
+
+```{r}
+require(knitr, quietly=T, warn.conflicts=F)
+parsed_results <- data.frame(species = species, 
+                             Fstats = F_stat,
+                             pvalues = pval, 
+                             significative = ifelse(pval<0.05, "*", ""))
+
+kable(parsed_results, 
+      caption = paste('Number of significant species: ', sum(pval<0.05)))
+```
+
+A continuació, agafo aquelles espècies on les diferències són significatives d'acord als anàlisi de variança (ANOVA) anteriorment computats.
+
+```{r}
+sig_sp <- species[pval < 0.05]
+```
+
+Amb l'operador `%in%` *fàcilment*\footnote{m'ha costat més del que pensava} puc computar les mitjanes que se'm demanen.
+
+```{r}
+require(dplyr, 
+        warn.conflicts = FALSE,
+        quietly=TRUE)
+
+means_ <- wood[, colnames(wood)%in%c(sig_sp, "sixclust")] %>% 
+            group_by(sixclust) %>% 
+            summarise(across(everything(), list(mean)))
+```
+
+Genero la taula, basant-me en \footnote{\url{https://stackoverflow.com/questions/61391380/kableextra-how-can-i-set-to-bold-the-biggest-value-of-the-row}}.
+
+```{r, message=FALSE, warning=FALSE}
+require(knitr); require(kableExtra)
+means_ <- as.matrix(sapply(means_, as.numeric))[, -1] # trec sixclust
+rownames(means_) <- 1:6
+colnames(means_) <- sig_sp
+means_ <- round(means_, 4)
+
+maxes <- apply(means_, 2, which.max) # màxim de cada espècie
+rows <- seq_len(nrow(means_))
+
+for (c in 1:ncol(means_)){
+  # en negreta els màxims de cada espècie
+  means_[,c] <- means_[,c] %>% cell_spec(bold = rows == maxes[c])
+}
+```
+
+A continuació mostro el resultat.
+
+```{r}
+means_ %>% kable(booktabs = TRUE, escape = FALSE, row.names = TRUE)
+```
+
+En negreta podem observar el màxim de cada espècie d'acord al *cluster*. He remarcat el màxim **per columna**, enlloc del màxim per fila, encara que trobo que la interpretació de l'enunciat podia anar pels dos costats. Espero no haver-me equivocat.
+
+## c) Mètode de Ward amb $k = 4$
+
+Repeteixo el mateix procediment que a l'apartat anterior, només canviant el mètode (i la funció) utilitzat per a realitzar el *clustering*. Limito els comentaris d'aquest apartat per a no fer-me repetitiu.
+
+```{r}
+d <- dist(wood[, -ncol(wood)])
+clust <- cluster::agnes(d, method="ward")
+
+plot(clust, which.plots = 2) # trio que es grafiqui el dendograma
+x <- rect.hclust(clust, k=4)
+```
+
+Veiem que la funció `rect.hclust` no funciona tan bé com quan l'objecte `hclust` provenia de la funció homònima (el límit superior dels rectangles no es correspon a l'alçada que dóna els $4$ *clusters*).
+
+```{r}
+cl <- 1
+fourclusters <- numeric(length=nrow(wood))
+for (l in x){
+  indexes <- unname(l)
+  fourclusters[indexes] <- cl
+  cl <- cl + 1
+}
+
+names(fourclusters) <- rownames(wood)
+
+wood$fourclust <- as.factor(fourclusters)
+```
+
+```{r}
+species <- pval <- F_stat <- numeric(ncol(wood) - 2) # fora sixclust i fourclust
+for (i in 1:(ncol(wood)-2)){
+aov_ <- summary(aov(wood[, i] ~ wood$fourclust)) 
+species[i] <- colnames(wood)[i]
+pval[i] <- aov_[[1]][["Pr(>F)"]][1]
+F_stat[i] <- aov_[[1]][["F value"]][1]
+}
+
+pval <- p.adjust(pval, method='bonferroni')
+```
+
+```{r}
+parsed_results <- data.frame(species = species, 
+                             Fstats = F_stat, 
+                             pvalues = pval, 
+                             significative = ifelse(pval<0.05, "*", ""))
+
+kable(parsed_results,
+      caption=paste('Number of significant species: ', sum(pval<0.05)))
+```
+
+
+```{r}
+sig_sp <- species[pval < 0.05]
+
+means_ <- wood[, colnames(wood)%in%c(sig_sp, "fourclust")] %>% 
+  group_by(fourclust) %>%
+  summarise(across(everything(), list(mean)))
+```
+
+
+```{r}
+means_ <- as.matrix(sapply(means_, as.numeric))[, -1] # trec fourclust 
+rownames(means_) <- 1:4
+colnames(means_) <- sig_sp
+means_ <- round(means_, 4)
+maxes <- apply(means_, 2, which.max) 
+rows <- seq_len(nrow(means_))
+for (c in 1:ncol(means_)){
+means_[,c] <- means_[,c] %>% cell_spec(bold = rows == maxes[c])
+}
+
+means_ %>% kable(booktabs = TRUE, escape = FALSE, row.names = T)
+```
+
+Veiem que el número d'espècies significatives s'ha reduit de $7$ (amb $k=6$ i mètode `complete`) a $5$ (amb $k=4$ i mètode de `ward`). A continuació, seguint la solució de l'exercici $3$ dels exercicis d'anàlisi de conglomerats, on s'avaluen diferents valors de $k$ mitjançant la funció `silhouette` del paquet `cluster`, vaig a utilitzar la *average silhouette width* com a mesura comparativa entre els resultats que hem obtingut fins ara.
+
+```{r}
+sil <- cluster::silhouette(fourclusters, d)
+paste('Ward method with k = 4 ->', round(mean(sil[, "sil_width"]), 3))
+sil <- cluster::silhouette(sixclusters, d)
+paste('Complete method with k = 6 ->', round(mean(sil[, "sil_width"]), 3))
+```
+
+Veiem que, amb $4$ clusters i el mètode de Ward, obtenim millors resultats. Tot i això, els *average silhouette width* és molt baix, per sota del *threshold* de $0.5$ que recomana Wikipedia\footnote{\url{https://en.wikipedia.org/wiki/Silhouette_(clustering)}} com a indicador d'un *clustering* raonablement fort.
+
+## d) $k$-*means* amb l'algorisme de Hartigan-Wong
+
+Fixo la *llavor* per a garantir la reproducibilitat tal i com es fa als exercicis del tema `R6`.
+
+```{r}
+x <- wood[, -c(ncol(wood), ncol(wood)-1)] # trec sixclust i fourclust
+set.seed(123)
+clust_kmeans <- kmeans(x, 
+                       centers=4, 
+                       algorithm="Hartigan-Wong")
+```
+
+Realitzo el gràfic que es demana amb la funció `clusplot` del paquet `cluster`.
+
+```{r}
+cluster::clusplot(x,
+                  clust_kmeans$cluster, 
+                  color=TRUE, 
+                  shade=TRUE, 
+                  labels=2, 
+                  lines=0)
+```
+
+Veiem que la descomposició en els dos components principals només explica un $35.63\%$ de la variabilitat total del conjunt de dades. Això em sembla força poc. Per altra banda, cal destacar que els clusters s'*overlapegen*.
+
+Per a obtenir els *centers* de cada un dels *clusters* de manera que es puguin graficar en un gràfic bidimensional, he de portar-los a aquest espai inferior. Buscant a internet, he trobat que `clusplot` utilitza `princomp` a partir de la matriu de correlacions per a obtenir la descomposició de les dades en components principals. Per tant, per a poder graficar les mitjanes de cada un dels *clusters* en el gràfic anterior, necessito extreure les mitjanes, per *cluster*, d'aquestes components.
+
+```{r}
+pr <- princomp(x, scores=TRUE, cor=T)
+wood2d <- pr$scores[, 1:2] # seleccionem els components que es mostren al gràfic clusplot
+wood2d <- as.data.frame(wood2d)
+
+```
+
+Comprovo ràpidament que és amb aquests components principals amb els que realitza el gràfic `clusplot`.
+```{r}
+plot(wood2d[, 1:2], xlim=c(-4.2, 4), ylim=c(-4, 3))
+text(wood2d[, 1:2], labels=rownames(wood))
+```
+
+Efectivament, podem procedir a extreure les mitjanes *across clusters* d'aquestes dues components principals.
+
+```{r}
+wood2d$clust <- as.factor(clust_kmeans$cluster)
+
+means_by_cluster2d <- wood2d %>% 
+                        group_by(clust) %>%
+                        summarise(across(1:2, list(mean)))
+
+means_by_cluster2d <- as.matrix(means_by_cluster2d[, -1])
+
+cluster::clusplot(x, clust_kmeans$cluster, 
+                  color=TRUE, shade=TRUE, labels=2, lines=0)
+
+text(means_by_cluster2d, labels="+",col="red",font=2,cex=1.2)
+```
+
+Veiem que les mitjanes que he obtengut no es corresponen exactament al que, visualment, es pot observar com el centre dels el·lipses. Això, pensant-hi, és possible que es degui al sol·lapament que exhibeixen les el·lipses. És possible que, en la realització del gràfic, `clusplot` tingui en compte el sol·lapament, mentre que jo computant les mitjanes, no ho tinc en compte.
+
+Per a trobar les mitjanes a cada *cluster* de les dades en la seva dimensió original, es faria a partir de l'objecte que he generat al principi de l'apartat.
+
+```{r}
+round(clust_kmeans$centers, 2)
+```
+
+I per a trobar el tamany de cada un dels conglomerats o *clusters*, ho podem fer de dues maneres simples.
+  
+```{r}
+rbind(directe=clust_kmeans$size, table=table(clust_kmeans$cluster))
+```
+
+Veiem que el conglomerat amb més observacions és el tercer. Per a calcular la *sum of squares* de cada un dels grups, l'objecte generat a l'inici també conté la clau.
+
+```{r}
+clust_kmeans$withinss
+```
+
+Veiem que, el cluster amb més observacions és al que correspon una *sum of squares* major, i el que té menys observacions és el que té una *sum of squares* menor.
+
+Com a comprovació, utilitzo la funció definida a l'apartat $1$f per a calcular les matrius de *within-class sums of squares and cross-products* de a cada grup. La suma de les diagonals em permet obtenir les *sums of squares* de cada un dels grups.
+
+```{r, echo=FALSE}
+## Funció que separa el dataframe
+separate_df <- function(df, f){
+  n <- nlevels(f)
+  l <- levels(f)
+  splitted <- list()
+  for (i in 1:n){
+    splitted[[l[i]]] <- data.matrix(df[f == l[i], ])
+  }
+  splitted
+}
+
+within_variance_helper <- function(x){
+  colmeans <- colMeans(x)
+  sweep(x, 2, STATS=colmeans, FUN='-')
+}
+
+within_sum_of_squares <- function(df, f){
+  f <- as.factor(f)
+  separated <- separate_df(df, f)
+  substracted <- lapply(separated, FUN = within_variance_helper)
+  k <- nlevels(f)
+  res <- list()
+  for (j in 1:k){
+    tmp <- substracted[[j]]
+    res[[j]] <- t(tmp)%*%tmp
+  }
+  res
+}
+
+wwv1 <- within_sum_of_squares(x, clust_kmeans$cluster)
+wwv2 <- sum_of_squares(df = x, f=clust_kmeans$cluster, mode='within', sum=FALSE)
+stopifnot(length(wwv1) == length(wwv2))
+for (l in 1:length(wwv1)){
+  stopifnot(all(wwv1[[l]] == wwv2[[l]]))
+}
+
+```
+
+```{r}
+ww <- sum_of_squares(df = x, f=clust_kmeans$cluster, mode='within', sum=FALSE)
+ss <- lapply(ww, FUN=function(x) sum(diag(x)))
+
+rbind(ss_vicent=ss, ss_true=clust_kmeans$withinss)
+```
+
+Veiem que els resultats són els mateixos. De la mateixa manera que he fet abans, vaig a comprovar quin és el *average silhouette width* per a aquest *clustering method*.
+
+```{r}
+sil <- cluster::silhouette(clust_kmeans$cluster, d)
+paste('k-means method with k = 4 ->', round(mean(sil[, "sil_width"]), 3))
+```
+
+Veiem que, amb aquesta mètrica, obtenim un promig molt similar a l'obtingut amb el mètode de Ward amb $k=4$.
+
+## e) k-medoides
+
+Utilitzo la funció `pam` del paquet `cluster`, amb un valor de $k=4$.
+
+```{r}
+pam4 <- cluster::pam(x=x, k=4, diss=F)
+```
+
+A partir de l'objecte generat (`pam4`) podem obtenir els *medoids*.
+
+```{r}
+pam4$medoids
+```
+
+Aquí veiem els valors de les $13$ espècies corresponents als $4$ medoides que es generen. Ara vaig a generar el gràfic *silueta* que es demana.
+
+```{r}
+plot(cluster::silhouette(pam4), col= c("lightblue","green","pink","gold"))
+```
+
+D'acord a l'entrada de Wikipedia que es dóna com a referència a l'enunciat de l'exercici, un *average silhouette width* inferior a $0.25$ indica un *clustering* pobre, on els objectes dins del propi *cluster* s'assemblen relativament poc entre ells comparat amb la semblança amb els objectes d'altres *clusters*. Amb el *clustering* generat en aquest apartat obtenim un *average silhouette width* de $0.16$, indicant que aquest *clustering* és pobre (tampoc millora cap dels *widths* anteriorment observats). Això, tal i com es menciona a l'article de la Wikipedia mencionat, és bastant probable que sigui degut a que les dades són d'una dimensió alta (hi ha moltes variables), fet que dificulta trobar una agrupació al voltant de medoides (o mitjanes) que sigui relevant o robusta.
+
+Buscant a Internet, he trobat que això es podria solventar o bé utilitzant pesos que reflecteixin que algunes dimensions poden ser menys rellevants que d'altres a l'hora de descriure les dades, utiltzant *feature selection* per a reduir el número de dimensions, o bé utilitzant alguna tècnica de reducció de la dimensionalitat com PCA.
+
+Com a comentari extra, he de dir que m'he estat debatent força sobre com tractar les dades d'aquest exercici, donat que són *counts*. He pensat que potser s'havien de convertir en freqüències relatives (i que aquesta era la trampa de l'exercici), però no m'he atrevit a fer-ho ja que enlloc de l'enunciat de cap dels apartats sembla haver cap indicació de que això és el que s'hauria d'haver fet. De totes formes, he buscat a Internet i he trobat el següent fòrum \footnote{\url{https://stats.stackexchange.com/questions/173636/clustering-of-very-skewed-count-data-any-suggestions-to-go-about-transform-et}.} on es comenta aquesta casuística. Bàsicament, un dels usuaris comenta que la millor manera de procedir a l'hora de voler dur a terme *clustering* amb dades d'aquest tipus, és computar distàncies respecte a aquestes i utilitzar-les com a *input* per al *clustering* (és el que hem fet). Tot i això, l'usuari argumenta que la millor manera de dur-ho a terme és amb distàncies Chi-quadrat. Nosaltres hem fet servir, generalment, distàncies euclídies.
+
+En altres entrades del mateix portal de fòrum es recomana utilitzar mètodes de *linkage complete* o *average*\footnote{\url{https://stats.stackexchange.com/questions/304182/choice-of-clustering-method-with-frequency-data}.}, com s'ha indicat a l'enunciat d'aquest exercici. Cal dir que, encara que citar entrades d'`Stack Exchange` pot resultar una metodologia de citació poc autoritativa, aquestes han sigut realitzades totes pel mateix usuari, que és desenvolupador del famós programari d'anàlisi estadística `SPSS`.
+
+Buscant més informació respecte al tema, he trobat que l'anàlisi de *count data* és un àmbit amb força potència, per exemple en el cas de l'anàlisi de patrons d'expressió gènica (on s'analitza el recompte de molècules de DNA, RNA o proteïnes), o, com ens ocupa en aquesta PAC, l'anàlisi ecològic d'abundància de diferents espècies en diferents llocs de mostreig. En aquest sentit, sembla que un dels models que s'ha proposat per a realitzar *clustering* d'aquest tipus de dades passa per el seu model·litzat mitjançant la *multivariate Poisson-log normal distribution* (Aitchison, 1989)\footnote{Exemple d'aplicació en seqüenciació de transcriptoma: \url{https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-019-2916-0}.}, que és un model mixte (Poisson i normal, tal i com indica el nom). Encara que no em correspon entrar-hi en aquest treball, seria una possibilitat estudiar si aplicar aquest *framework* per a realitzar un anàlisi potencialment més potent del *dataset* `wood.txt`.
+
+
+\newpage
+# Apèndix
+
+Funció per a comprovar que `rect.hclust` i `cutree` funcionen de la mateixa manera. La primera funció retorna una llista amb el mateix número d'entrades que de *clusters*, i a cada entrada hi ha els seus membres. Per altra banda, `cutree` retorna un vector amb els membres als noms del vector i els elements que corresponen al *clúster* al que pertany cada un. El problema és que `rect.hclust` assigna uns números/ordre als *clústers* diferents que els que assigna `cutree`.
+
+```{r}
+check_OCD <- function(vector_cutree, list_rect){
+  
+  if (!is.list(list_rect) | !is.vector(vector_cutree)) 
+    stop(
+      "wrong args. Got: '", class(vector_cutree), "' (expected vector); and '", 
+         class(list_rect), "' (expected list)"
+      )
+  
+  for (l in list_rect){
+    # get first one, determines the cluster we'll check from vector_cutree
+    bossman <- l[1]
+    
+    # get the cluster as numbered in vector
+    which_clust <- vector_cutree[names(vector_cutree) == bossman]
+    
+    # get all his friends
+    friends <- names(vector_cutree)[vector_cutree == which_clust]
+    
+    # check if they match from list
+    stopifnot(all(friends == l))
+  }
+}
+
+```
+
+```{r, fig.show='hide'}
+# test 1
+wood <- read.table('wood.txt')
+d <- dist(wood)
+clust <- hclust(d, method='complete')
+vector_cutree <- cutree(clust, k=6)
+
+plot(clust)
+list_rect <- rect.hclust(clust, k=6)
+check_OCD(vector_cutree = vector_cutree, list_rect = list_rect)
+
+```
+
+Test 1 passa.
+
+```{r, fig.show='hide'}
+# test 2
+clust <- hclust(d, method='ward.D2')
+vector_cutree <- cutree(clust, k=4)
+plot(clust)
+list_rect <- rect.hclust(clust, k=4)
+check_OCD(vector_cutree = vector_cutree, list_rect = list_rect)
+```
+
+Veiem que si que funcionen equivalentment (la funció no falla en ambdós casos).
